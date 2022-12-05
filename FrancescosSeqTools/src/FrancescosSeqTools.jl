@@ -409,7 +409,6 @@ function gibbs_sampling(q,h_local,Jij,sequences,site_degree,contact_list,sweeps)
     w2=zeros(Float32,q) 
     rows=length(sequences[:,1])
     columns=length(sequences[1,:])
-    
         for i3 in 1:sweeps*columns
             if i3%columns==0
                 i2=columns
@@ -554,11 +553,9 @@ function ss_matrix_to_dot_bracket(ss_contact_matrix)
 function dot_bracket_to_ss_matrix(dot_bracket_ss)
 	 dot_bracket_ss=collect((join(dot_bracket_ss)))
 	 for i in 1:length(dot_bracket_ss)
-		    if dot_bracket_ss[i]=='{' || dot_bracket_ss[i]=='<' || dot_bracket_ss[i]=='[' || dot_bracket_ss[i]=='('
-		       
+		    if dot_bracket_ss[i]=='{' || dot_bracket_ss[i]=='<' || dot_bracket_ss[i]=='[' || dot_bracket_ss[i]=='(' 
 			dot_bracket_ss[i]='('
 		    elseif dot_bracket_ss[i]=='}' || dot_bracket_ss[i]=='>' || dot_bracket_ss[i]==']' || dot_bracket_ss[i]==')'
-		       
 			dot_bracket_ss[i]=')'
 		    else     
 			dot_bracket_ss[i]='.'
@@ -568,9 +565,7 @@ function dot_bracket_to_ss_matrix(dot_bracket_ss)
 		contact_matrix=zeros(Int8,len,len)  
 		number_of_contacts=length(dot_bracket_ss[dot_bracket_ss.=='('])
 		contact_list=zeros(number_of_contacts,2)                                                 
-
 		ss_proxy=zeros(Int8,len)  
-
 		for i in 1:len
 		    if dot_bracket_ss[i]=='('
 			ss_proxy[i]=1
@@ -588,18 +583,14 @@ function dot_bracket_to_ss_matrix(dot_bracket_ss)
 		    if ss_proxy[i]==2
 			ss_proxy[i]=0
 			for j in 1:i
-			    
 			    if k==0
 			    if j<i
-				
 				if ss_proxy[i-j]==1
 				    contact_matrix[i-j,i]=1
-				    
 				    contact_list[idx,:]=[i-j,i]
 				    idx+=1
 				    ss_proxy[i-j]=0
-				    k=1
-				    
+				    k=1 
 				end
 			    end
 			    end
