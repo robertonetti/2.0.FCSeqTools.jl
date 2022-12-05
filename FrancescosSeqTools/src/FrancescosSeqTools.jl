@@ -514,12 +514,12 @@ end
 
 
 
-function rna_cm_model_generation(threshold,number,number_matrix,ss_contact_matrix)	
+function rna_cm_model_generation(threshold,pseudo_count,number,number_matrix,ss_contact_matrix)	
     sec_proxy_list=findall(!iszero, ss_contact_matrix)
     proxy_idx_1 = getindex.(sec_proxy_list, 1)
     proxy_idx_2 = getindex.(sec_proxy_list, 2)
     sec_contacts=hcat(proxy_idx_1,proxy_idx_2)
-    fij=fij_reweighted(number_matrix,5,0,threshold)
+    fij=fij_reweighted(number_matrix,5,pseudo_count,threshold)
     sequences=profile_model_generation(threshold,5,number,number_matrix)
     for i in 1:number
         for j in 1:length(sec_contacts[:,1])
