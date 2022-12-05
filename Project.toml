@@ -1,3 +1,8 @@
+name = "FrancescosSeqTools"
+uuid = "162ae4b0-3c7a-4aac-8849-43d6b29b59f0"
+authors = ["Francesco Calvanese <calvanesefranc@gmail.com>"]
+version = "0.1.0"
+
 [deps]
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
