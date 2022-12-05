@@ -2,7 +2,7 @@
 
 The FrancescosSeqTools package contains the following functions:
 
-- `RNAaliduplex`  
+- `do_letter_matrix(filename)`  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
 
 
