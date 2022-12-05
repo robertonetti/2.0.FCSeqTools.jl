@@ -353,22 +353,6 @@ end
 
 
 
-function correlation_comparison_plot_tool(matrix_1,matrix_2,Number,q)
-	correlation_list_1=correlation_two_point(matrix_1,q,0)
-	correlation_list_2=correlation_two_point(matrix_2,q,0)
-	len=length(correlation_list_1)
-	correlation_to_plot_1=zeros(Float32,Number)
-	correlation_to_plot_2=zeros(Float32,Number)
-	for i in 1:Number
-	    j=rand(1:len)
-	    correlation_to_plot_1[i]=correlation_list_1[j]
-	    correlation_to_plot_2[i]=correlation_list_2[j]
-	end
-	return correlation_to_plot_1,correlation_to_plot_2
-end
-
-
-
 function site_entropy_vector(matrix,q,pseudo_count,threshold)
 	frequency=freq_reweighted(matrix,q,pseudo_count,threshold)
 	entropy_vector=zeros(Float32,length(matrix[1,:]))
