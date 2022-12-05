@@ -391,8 +391,8 @@ end
 
 
 
-function profile_model_generation(threshold,q,number,number_matrix)
-    freq=freq_reweighted(number_matrix,q,0,threshold)
+function profile_model_generation(threshold,q,pseudo_count,number,number_matrix)
+    freq=freq_reweighted(number_matrix,q,pseudo_count,threshold)
     sequences=zeros(Int8,number,length(number_matrix[1,:]))
     for j in 1:length(number_matrix[1,:])
         for i in 1:number
