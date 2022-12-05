@@ -1,2 +1,2 @@
 # FrancescosSeqTools.jl
-Tools for hehehe
+Tools for Francesco
