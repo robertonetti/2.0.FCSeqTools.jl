@@ -9,6 +9,10 @@ using Statistics
 
 
 
+export do_letter_matrix
+
+
+
 function do_letter_matrix(filename)
 f=open(filename)
     lines=readlines(f)
