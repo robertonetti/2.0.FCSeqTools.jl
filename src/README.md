@@ -6,6 +6,7 @@
 - `do_letter_matrix(filename)`
 Reads a Fasta file and converts it in a letter matrix format
 
+
 - `do_number_matrix_rna(letter_matrix,threshold)`  
 Takes an RNA letter matrix and converts it in a number matrix. Sequences with a % of alignment gaps greater than "threshold" are excluded
 
