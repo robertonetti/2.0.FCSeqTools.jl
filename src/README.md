@@ -1,6 +1,4 @@
-## Functions list
-
-The FCSeqTools contains the following functions:
+##Functions list
 
 ## Read & Write 
 
