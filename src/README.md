@@ -4,9 +4,9 @@
 
 
 - `do_letter_matrix(filename)`  
-Reads a FASTA file and outputs
+Reads a FASTA file and converts it in matrix format
 - `do_number_matrix_rna(letter_matrix,threshold)`  
-Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
+Reads an RNA FASTA matrix and outputs it in mat
 - `do_number_matrix_prot(letter_matrix,threshold)`  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
 - `print_fasta_to_file_rna(number_matrix,filename,name)`  
