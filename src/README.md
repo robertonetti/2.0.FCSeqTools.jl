@@ -1,13 +1,13 @@
+## Functions
 
-
-## Read & Write 
+# Read & Write 
 
 
 - `do_letter_matrix(filename)`  
 Reads a Fasta file and converts it in a letter matrix format
 
 - `do_number_matrix_rna(letter_matrix,threshold)`  
-Takes an RNA letter matrix and converts it in a number matrix. Sequences with a % of alignment gaps greater than the threshold are excluded
+Takes an RNA letter matrix and converts it in a number matrix. Sequences with a % of alignment gaps greater than "threshold" are excluded
 
 - `do_number_matrix_prot(letter_matrix,threshold)`  
 Takes a protein letter matrix and converts it in a number matrix. Sequences with a % of alignment gaps greater than "threshold" are excluded
