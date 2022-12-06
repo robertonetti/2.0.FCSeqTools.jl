@@ -20,7 +20,7 @@ Takes an RNA number matrix and prints it in a file named "filename" in Fasta for
 Takes an RNA number matrix and prints it in Fasta format. The sequences are labelled with ">i_name"
 
 - `one_hot_encode(number_matrix,q)`   
-One hot encodes a number matrix with q states ($q=5$ for RNA and $q=21$ for proteins)
+One hot encodes a number matrix with q states ($ q=5 $ for RNA and $ q=21 $ for proteins)
 
 
 ## Statistics
