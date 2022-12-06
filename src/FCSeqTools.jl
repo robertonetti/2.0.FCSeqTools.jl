@@ -6,6 +6,7 @@ using Distances
 using StatsBase
 using Random
 using Statistics
+using ExportAll
 
 
 
@@ -590,5 +591,9 @@ function dot_bracket_to_ss_matrix(dot_bracket_ss)
 end	
  
 
+		
+@exportAll()
+		
+		
 
 end # module
