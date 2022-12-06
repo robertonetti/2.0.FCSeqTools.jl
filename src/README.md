@@ -1,6 +1,6 @@
-## Functions
+# Functions
 
-# Read & Write 
+## Read & Write 
 
 
 - `do_letter_matrix(filename)`  
