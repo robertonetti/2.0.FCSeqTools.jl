@@ -45,7 +45,7 @@ Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffff
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff -
 
 
-## Generative models & sampling 
+## Generative models & Sampling 
 
 
 - `profile_model_generation(threshold,q,pseudo_count,number,number_matrix)`  
