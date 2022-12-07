@@ -58,7 +58,7 @@ Computes the site entropies for a number matrix with $q$ states per site. the "p
 Computes the profile model entropy for a number matrix with $q$ states per site. the "pseudo_count" is applied to the frequencies needed to the calculation of the entropy. See `weight_of_sequences` for the "threshold" parameter
 
 - `max_kl_divergence(fij,pij)`  
-Takes ad input two two-point frequencies matrices and outputs  the $argmax_{i;j} D_{kl}( f_{ij} || p_{ij} )$ and the $max_{i;j} D_{kl}( f_{ij} || p_{ij} )$
+Takes ad input two two-point frequencies matrices and outputs  the $argmax_{ij} D_{kl}( f_{ij} || p_{ij} )$ and the $max_{ij} D_{kl}( f_{ij} || p_{ij} )$
 
 
 ## Generative models & Sampling 
@@ -80,9 +80,9 @@ Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffff
 
 
 - `ss_matrix_to_dot_bracket(ss_contact_matrix)`  
-Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
-- `dot_bracket_to_ss_matrix(dot_bracket_ss)`  
-Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
+Takes a secondary structure contact matrix ( 1 if contact 0 if not ) and outputs it in the dot bracket format
 
+- `dot_bracket_to_ss_matrix(dot_bracket_ss)`  
+Takes a secondary structure in the dot bracket format and outputs the contact list and secondary structure contact matrix ( 1 if contact 0 if not )
 
 
