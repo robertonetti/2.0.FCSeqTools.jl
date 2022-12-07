@@ -83,6 +83,6 @@ Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffff
 Takes a secondary structure contact matrix ( 1 if contact 0 if not ) and outputs it in the dot bracket format
 
 - `dot_bracket_to_ss_matrix(dot_bracket_ss)`  
-Takes a secondary structure in the dot bracket format and outputs the contact list and secondary structure contact matrix ( 1 if contact 0 if not )
+Takes a secondary structure in the dot bracket format and outputs the structure contact list and the structure contact matrix ( 1 if contact 0 if not )
 
 
