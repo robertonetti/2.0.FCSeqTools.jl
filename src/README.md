@@ -52,10 +52,10 @@ Computes the reweighted two-point correlations for a number matrix with $q$ stat
 Computes the effective size of the dataset taking in account sequence similarity. See `weight_of_sequences` for the "threshold" parameter
 
 - `site_entropy_vector(matrix,q,pseudo_count,threshold)`  
-Computes the site entropies for a number matrix with $q$ states per site. the "pseudo_count" is applied to the frequencies needed to the calculation of the entropies. See `weight_of_sequences` for the "threshold" parameter
+Computes the site entropies for a number matrix with $q$ states per site. The "pseudo_count" is applied to the frequencies needed to the calculation of the entropies. See `weight_of_sequences` for the "threshold" parameter
 
 - `profile_model_entropy(matrix,q,pseudo_count,threshold)`  
-Computes the profile model entropy for a number matrix with $q$ states per site. the "pseudo_count" is applied to the frequencies needed to the calculation of the entropy. See `weight_of_sequences` for the "threshold" parameter
+Computes the profile model entropy for a number matrix with $q$ states per site. The "pseudo_count" is applied to the frequencies needed to the calculation of the entropy. See `weight_of_sequences` for the "threshold" parameter
 
 - `max_kl_divergence(fij,pij)`  
 Takes as input two two-point frequencies matrices and outputs  the $\underset{ij}{argmax} D_{kl}( f_{ij} || p_{ij} )$ and the $\underset{ij}{max} D_{kl}( f_{ij} || p_{ij} )$
@@ -65,15 +65,17 @@ Takes as input two two-point frequencies matrices and outputs  the $\underset{ij
 
 
 - `profile_model_generation(threshold,q,pseudo_count,number,number_matrix)`  
-Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff - - 
+Learns a profile model from a q-states number matrix and samples "number" sequences from it.  The "pseudo_count" and "threshold" are applied to the frequencies needed for the computation of the model parameters. See `weight_of_sequences` for the "threshold" parameter
+
 - `gibbs_sampling(q,h_local,Jij,sequences,site_degree,contact_list,sweeps)`  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff -
 - `E_A_A(q,pseudo_count,number,number_matrix,filename)`  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff -
 - `rna_cm_model_generation(threshold,pseudo_count,number,number_matrix,ss_contact_matrix)	`  
-Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
+Learns an RNA covariance model from a number matrix and its associated secondary structure contact matrix ( 1 if contact 0 if not ) and samples "number" sequences from it.  The "pseudo_count" and "threshold" are applied to the frequencies needed for the computation of the model parameters. See `weight_of_sequences` for the "threshold" parameter
+
 - `reweighted_sample(number_matrix,number,threshold)`  
-Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
+
 
 
 ## Utils
