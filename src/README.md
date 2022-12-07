@@ -58,7 +58,7 @@ Computes the site entropies for a number matrix with $q$ states per site. the "p
 Computes the profile model entropy for a number matrix with $q$ states per site. the "pseudo_count" is applied to the frequencies needed to the calculation of the entropy. See `weight_of_sequences` for the "threshold" parameter
 
 - `max_kl_divergence(fij,pij)`  
-Takes ad input two two-point frequencies matrices and outputs  the $argmax_{ij} D_{kl}( f_{ij} || p_{ij} )$ and the $max_{ij} D_{kl}( f_{ij} || p_{ij} )$
+Takes as input two two-point frequencies matrices and outputs  the $argmax_{ij} D_{kl}( f_{ij} || p_{ij} )$ and the $max_{ij} D_{kl}( f_{ij} || p_{ij} )$
 
 
 ## Generative models & Sampling 
