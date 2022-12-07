@@ -33,7 +33,7 @@ Computes the site frequencies for a number matrix with $q$ states per site. The 
 Computes the two-point site frequencies for a number matrix with $q$ states per site. The frequencies of all the configurations that never appear in the data are set to $\frac{pseudo\textunderscore count}{q^2}$. The output is a matrix and the two-point frequency of state $s$ on site $i$ and state $r$ on site $j$ (with $i$ < $j$) is the $[i,j,q\cdot (s-1) + r]$ element of the matrix
 
 - `correlation_two_point(number_matrix,q,pseudo_count)`  
-Computes the two-point correlations for a number matrix with $q$ states per site. the "pseudo_count" is applied to the frequencies needed to the calculation of the correlations. The output is a vector and the two-point correlation of state $s$ on site $i$ and state $r$ on site $j$ (with $i$ < $j$) is the $\bigg[q^2[\cdot L\cdot (i-1) + \frac{i\cdot(i-1)}{2}]+q^2\cdot(j-1)+q\cdot (s-1) + r\bigg]$ element of the vector
+Computes the two-point correlations for a number matrix with $q$ states per site. the "pseudo_count" is applied to the frequencies needed to the calculation of the correlations. The output is a vector and the two-point correlation of state $s$ on site $i$ and state $r$ on site $j$ (with $i$ < $j$) is the $\bigg[q^2\bigg(\cdot L\cdot (i-1) + \frac{i\cdot(i-1)}{2}\bigg+q^2\cdot(j-1)+q\cdot (s-1) + r\bigg]$ element of the vector
 
 - `weight_of_sequences(number_matrix,threshold)`  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
