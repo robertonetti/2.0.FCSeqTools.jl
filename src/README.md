@@ -27,7 +27,7 @@ One hot encodes a number matrix with q states ( $q=5$ for RNA and $q=21$ for pro
 
 
 - `freq_single_point(number_matrix,q,pseudo_count)`  
-Computes the site frequencies for a number matrix with $q$ states per site. The frequencies of all the configurations that never appear in the data are set to $\frac{pseudo\_count}{q}$. The output is a vector and the frequency of state $s$ on site $i$ is the $[q\dot(i-1)+s]$ element of the vector
+Computes the site frequencies for a number matrix with $q$ states per site. The frequencies of all the configurations that never appear in the data are set to $\frac{pseudo\textunderscore count}{q}$. The output is a vector and the frequency of state $s$ on site $i$ is the $[q\cdot(i-1)+s]$ element of the vector
 
 - `fij_two_point(number_matrix,q,pseudo_count) `  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
