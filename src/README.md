@@ -68,7 +68,7 @@ Takes as input two two-point frequencies matrices and outputs  the $\underset{ij
 Learns a profile model from a q-states number matrix and samples "number" sequences from it.  The "pseudo_count" and "threshold" are applied to the frequencies needed for the computation of the model parameters. See `weight_of_sequences` for the "threshold" parameter
 
 - `gibbs_sampling(q,h_local,Jij,sequences,site_degree,contact_list,sweeps)`  
-Performs N="sweeps" Gibbs MonteCarlo sweeps on a a q-states number matrix specified by "sequences". The "Jij", "h_local", "contact_list" and "site_degree" parameters are used to specify the model and are compatible with the outputs of ther `E_A_A` function.  
+Performs N="sweeps" Gibbs MonteCarlo sweeps on a a q-states number matrix specified by "sequences". The "Jij", "h_local", "contact_list" and "site_degree" parameters are used to specify the model and are compatible with the outputs of the `E_A_A` function.  
 
 - `E_A_A(q,pseudo_count,number,number_matrix,filename)`  
 Predict conserved RNA## Executable Programsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff -
