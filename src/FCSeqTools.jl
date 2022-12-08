@@ -475,7 +475,7 @@ function E_A_A(q,pseudo_count,number,number_matrix,filename)
 	    contact_matrix[added_edge[1],added_edge[2]]=1
 	    edge_list=vcat(edge_list,[added_edge[1],added_edge[2]]')
         end
-        print("   edges: ",n_edges, "   ",round(((n_edges)/n_fully_connected_edges)*100,digits=2) ,"%"    )
+        print("   edges: ",n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    )
         write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    ) 
         log_z+=log(sum((fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:])).*      (pij_lgz[added_edge[1],added_edge[2],:])))    
         Jij_update=log.(fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:]))
