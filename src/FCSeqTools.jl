@@ -439,7 +439,7 @@ function E_A_A(q,pseudo_count,number,number_matrix,filename)
     println("Fully connected model has ",n_fully_connected_edges," edges and a score around ~ 0.95")
     open(filename, "w") do f  
     write(f,"Fully connected model has ","$(n_fully_connected_edges)"," edges and a score around ~ 0.95")  
-    for i in 1:10
+    for i in 1:10000
     	 flush(stdout)   
     	 flush(f)                           
          sequences=gibbs_sampling(q,h_local,Jij_couplings,sequences,site_degree,contact_list,5)
