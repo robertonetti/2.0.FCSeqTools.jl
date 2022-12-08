@@ -505,7 +505,7 @@ function rna_cm_model_generation(threshold,pseudo_count,number,number_matrix,ss_
     proxy_idx_2 = getindex.(sec_proxy_list, 2)
     sec_contacts=hcat(proxy_idx_1,proxy_idx_2)
     fij=fij_reweighted(number_matrix,5,pseudo_count,threshold)
-    sequences=profile_model_generation(threshold,5,number,number_matrix)
+    sequences=profile_model_generation(threshold,5,pseudo_count,number,number_matrix)
     for i in 1:number
         for j in 1:length(sec_contacts[:,1])
             w=fij[sec_contacts[j,1],sec_contacts[j,2],5*((sequences[i,sec_contacts[j,1]])-1)+1:5*((sequences[i,sec_contacts[j,1]])-1)+5]
