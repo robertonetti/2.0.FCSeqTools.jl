@@ -1,4 +1,4 @@
-# FCSeqTools package (Julia 1.7)
+# FCSeqTools package (Julia 1.7.2)
 
 This package contains a series of function used to study sequence data. The main focus is RNA but most of them can also be used with protein or with a generic q-state system. For the explanation of all the contained function go to the `READEME.md` in the `src` folder
 
