@@ -14,4 +14,4 @@ To install access the Julia Package REPL and type
 
 `add https://github.com/FrancescoCalvanese/FCSeqTools.jl`
 
-Then to use it is sufficient to use `using FCSeqTolls` in a Julia environment
+Then to use it is sufficient to use `using FCSeqTools` in a Julia environment
