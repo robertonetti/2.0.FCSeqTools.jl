@@ -5,7 +5,7 @@ This package contains a series of function used to study sequence data. The main
 # Contents
 
 - `src` folder contains the code and the explanation of all the functions
-- `Example` folder contains an explained example of the Edge Addition Algorithm
+- `Example` folder contains an explained example of the Edge Activation Algorithm
 
 
 # Installation 
