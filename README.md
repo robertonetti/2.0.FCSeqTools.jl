@@ -4,8 +4,8 @@ This package contains a series of function used to study sequence data. The main
 
 # Contents
 
-- `src` contains the code and the explanation of all the functions
-- `example` contains an explained example of the Edge Addition Algorithm
+- `src` folder contains the code and the explanation of all the functions
+- `Example` folder contains an explained example of the Edge Addition Algorithm
 
 
 # Installation 
