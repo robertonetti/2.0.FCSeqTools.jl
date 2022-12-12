@@ -8,6 +8,10 @@ This package contains a series of function used to study sequence data. The main
 - `example` contains an explained example of the Edge Addition Algorithm
 
 
-# Installation
+# Installation 
 
-`pkg> add https://github.com/FrancescoCalvanese/FCSeqTools.jl`
+To install access the Julia Package REPL and type
+
+`add https://github.com/FrancescoCalvanese/FCSeqTools.jl`
+
+Then to use it is sufficient to use `using FCSeqTolls` in a Julia environment
