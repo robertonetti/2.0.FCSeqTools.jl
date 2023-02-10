@@ -36,6 +36,7 @@ end
 
 
 function secondary_structure_plot_tools(filename)
+	# Create a file copy
 	f = open(filename)                            
 	lines=readlines(f)
 	copy=lines
@@ -46,22 +47,24 @@ function secondary_structure_plot_tools(filename)
 	for i in 1:length(copy)
 		file_copy[i]=split(copy[i],[' ','[',']',','])
 	end
+	# Trova e copia la riga che inizia con HMM
 	starting_condition=0
 	i=1
 	while starting_condition==0
 	    if file_copy[i][1]=="HMM"
-		starting_condition=1
+			starting_condition=1
 	    else
-	    i=i+1
+	    	i=i+1
 	    end
 	end 
 	file_copy=file_copy[i+3:end-1]
+
 	dot_bracket_ss=[]
 	molecule=[]
 	for i in 1:length(file_copy)
 	    if i%3==0
-		push!(dot_bracket_ss,file_copy[i][end])
-		push!(molecule,file_copy[i][end-3])
+			push!(dot_bracket_ss, file_copy[i][end])
+			push!(molecule, file_copy[i][end-3])
 	    end
 	end
 	for i in 1:length(dot_bracket_ss)

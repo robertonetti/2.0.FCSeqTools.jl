@@ -13,7 +13,7 @@ using ExportAll
 function do_letter_matrix(filename)
 f=open(filename)
     lines=readlines(f)
-    letter_matrix=Array{Char,2}(undef,Int64(1),Int64(0))
+    letter_matrix = Array{Char,2}(undef,Int64(1),Int64(0))
     for i in 1:Int64(length(lines))
       if lines[i][1]=='>'
         j=1
