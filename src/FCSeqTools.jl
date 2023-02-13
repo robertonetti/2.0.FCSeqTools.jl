@@ -8,6 +8,156 @@ using Random
 using Statistics
 using ExportAll
 
+function weight_of_sequences(number_matrix,threshold)
+    """
+    Conta quante sequenze sono simili sopra una determinata soglia. Se sopra la soglia, aumenta il peso corrispondente ad esse.
+    Infine ridefinisce il peso = 1/peso : cosicchè le sequenze molto simili non abbiano molta importanza.
+    """
+    N = length(number_matrix[:,1])
+    L = length(number_matrix[1,:])
+    weights = ones(Float64,N)
+    for i in 1:N
+        for j in i+1:N
+            if (L - hamming(number_matrix[i,:],number_matrix[j,:]))/L >= threshold
+                weights[i] += 1
+                weights[j] += 1
+            end
+        end
+    end
+    return weights.^(-1)
+end
+
+function freq_reweighted(number_matrix, q, pseudo_count, threshold)
+    """
+
+    Parameters
+    ----------
+
+
+    """
+    weight = weight_of_sequences(number_matrix, threshold)
+    frequencies = zeros(Float32, q*length(number_matrix[1,:]))
+    for j in 1:length(number_matrix[:,1]) # j ∈ N
+    	for i in 1:length(number_matrix[1,:]) # i ∈ L
+    		frequencies[(i-1)*q + number_matrix[j,i]] += weight[j] #update frequence 
+   	    end
+    end
+    frequencies = frequencies/sum(weight) # normalize with weights
+    # pseudo count does not allow frequencies to be zero and let the log explode
+    return (1 - Float32(pseudo_count)) * frequencies. + Float32(pseudo_count / q)
+end
+
+function fij_reweighted(number_matrix,q,pseudo_count,threshold) 
+    weight=weight_of_sequences(number_matrix,threshold)
+    fij=zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]),q^2)
+    for i1 in 1:length(number_matrix[:,1])
+        for i2 in 1: length(number_matrix[1,:])
+            for i3 in i2+1:length(number_matrix[1,:])
+                fij[i2,i3,(number_matrix[i1,i2]-1)*q+number_matrix[i1,i3]]+=weight[i1]
+            end
+        end
+    end
+    fij=fij/sum(weight)
+    return  (1-Float32(pseudo_count))*fij.+Float32((pseudo_count)/(q^2))
+end
+
+function E_A_A(q, pseudo_count, number, number_matrix, filename)
+    """
+
+    Parameters
+    ----------
+    q (int): number of aminoacids/nucletodides
+    pseudo_count (float):
+    number (int):
+
+
+
+    """
+    edge_list = zeros(Int64,0,2)
+    n_edges = 0
+    n_fully_connected_edges = Int64(length(number_matrix[1,:])*(length(number_matrix[1,:]) - 1)*0.5)
+    contact_list = zeros(Int64,length(number_matrix[1,:]),length(number_matrix[1,:]))
+    site_degree = zeros(Int64,length(number_matrix[1,:])) # per ognuno mette il degree del sito
+    likelihood_gain_vector = Float32[]
+    Jij_couplings = zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]), q*q) 
+    # initialize local fields with frequencies
+    h_local = log.(freq_reweighted(number_matrix, q, pseudo_count, 0.8)) 
+
+    sequences = zeros(Int8, number, length(number_matrix[1,:]))
+    fij_target = fij_reweighted(number_matrix, q, pseudo_count, 0.8)
+    cij_target=correlation_reweighted(number_matrix,q,0,0.8) 
+    score_vector=Float32[]
+    contact_matrix=zeros(Int8,length(number_matrix[1,:]),length(number_matrix[1,:]))
+    log_z=Float32(0)
+    println("Fully connected model has ",n_fully_connected_edges," edges and a score around ~ 0.95")
+    open(filename, "w") do f  
+    write(f,"Fully connected model has ","$(n_fully_connected_edges)"," edges and a score around ~ 0.95")  
+    for i in 1:10000
+    	 flush(stdout)   
+    	 flush(f)                           
+         sequences=gibbs_sampling(q,h_local,Jij_couplings,sequences,site_degree,contact_list,5)
+         pij_training=fij_two_point(sequences[1:number-2000,:],q,pseudo_count)
+         pij_lgz=fij_two_point(sequences[number-1999:end,:],q,0)  
+         if (i-1)%15==0 && i!=1
+            cij_model=correlation_two_point(sequences,q,0)  
+            score=cor(cij_target,cij_model)    
+            score_vector=push!(score_vector,score)
+            score=round(score;digits=3)            
+            print("   Score = ",score) 
+            write(f,"   Score = ","$(score)")
+            energy1=-sum(fij_two_point(sequences,q,0).*Jij_couplings)-sum(freq_single_point(sequences,q,0).*h_local)               
+            print("    <E> = ",round(energy1;digits=2), "    log(Z) = ",round(log_z;digits=2)) 
+            print("   S = ",round(log_z+energy1;digits=2))
+	    write(f,"    <E> = ","$(round(energy1;digits=2))", "    log(Z) = ","$(round(log_z;digits=2))")  
+            write(f,"   S = ","$(round(log_z+energy1;digits=2))")                 
+            if score >=Float32(0.95)
+            	println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score;digits=2))")
+            	write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score;digits=2)) \n")
+            	return score_vector ,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
+            end        
+         end     
+         added_edge,likelihood_gain=max_kl_divergence(fij_target,pij_training)       
+         likelihood_gain_vector=push!(likelihood_gain_vector,likelihood_gain)
+         print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
+         write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
+         if contact_matrix[added_edge[1],added_edge[2]]==0
+            n_edges+=1
+            site_degree[added_edge[1]]+=1
+	    site_degree[added_edge[2]]+=1   
+	    contact_list[site_degree[added_edge[1]],added_edge[1]]=added_edge[2]
+	    contact_list[site_degree[added_edge[2]],added_edge[2]]=added_edge[1]
+	    contact_matrix[added_edge[1],added_edge[2]]=1
+	    edge_list=vcat(edge_list,[added_edge[1],added_edge[2]]')
+        end
+        print("   edges: ",n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    )
+        write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    ) 
+        log_z+=log(sum((fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:])).*      (pij_lgz[added_edge[1],added_edge[2],:])))    
+        Jij_update=log.(fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:]))
+        Jij_couplings[added_edge[1],added_edge[2],:]+=Jij_update     
+    end  
+    end
+    return score_vector,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 function do_letter_matrix(filename)
@@ -15,25 +165,25 @@ f=open(filename)
     lines=readlines(f)
     letter_matrix = Array{Char,2}(undef,Int64(1),Int64(0))
     for i in 1:Int64(length(lines))
-      if lines[i][1]=='>'
-        j=1
-        temp=join(lines[i+j])
-        while j!=-1
-            if i+j+1 <= length(lines)
-        	if lines[i+j+1][1]!='>'
-                temp=temp*join(lines[i+j+1])
-                j=j+1
-            else j=-1
+        if lines[i][1]=='>'
+            j=1
+            temp=join(lines[i+j])
+            while j!=-1
+                if i+j+1 <= length(lines)
+                    if lines[i+j+1][1]!='>'
+                        temp=temp*join(lines[i+j+1])
+                        j=j+1
+                    else j=-1
+                    end
+                else j=-1
+                end
             end
-            else j=-1
+            if i==1
+            letter_matrix=hcat(letter_matrix,reshape(collect(temp),1,length(collect(temp))))
+            else
+            letter_matrix=vcat(letter_matrix,reshape(collect(temp),1,length(collect(temp))))
             end
         end
-	if i==1
-		letter_matrix=hcat(letter_matrix,reshape(collect(temp),1,length(collect(temp))))
-	else
-        letter_matrix=vcat(letter_matrix,reshape(collect(temp),1,length(collect(temp))))
-    end
-    end
     end
   return letter_matrix
 end
@@ -215,50 +365,15 @@ end
 
 
 
-function weight_of_sequences(number_matrix,threshold)
-    N=length(number_matrix[:,1])
-    L=length(number_matrix[1,:])
-    weights=ones(Float64,N)
-    for i in 1:N
-        for j in i+1:N
-            if (L-hamming(number_matrix[i,:],number_matrix[j,:]))/L>=threshold
-                weights[i]+=1
-                weights[j]+=1
-            end
-        end
-    end
-return weights.^(-1)
-end
 
 
 
-function fij_reweighted(number_matrix,q,pseudo_count,threshold) 
-    weight=weight_of_sequences(number_matrix,threshold)
-    fij=zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]),q^2)
-    for i1 in 1:length(number_matrix[:,1])
-        for i2 in 1: length(number_matrix[1,:])
-            for i3 in i2+1:length(number_matrix[1,:])
-                fij[i2,i3,(number_matrix[i1,i2]-1)*q+number_matrix[i1,i3]]+=weight[i1]
-            end
-        end
-    end
-    fij=fij/sum(weight)
-    return  (1-Float32(pseudo_count))*fij.+Float32((pseudo_count)/(q^2))
-end
 
 
 
-function freq_reweighted(number_matrix,q,pseudo_count,threshold)
-    weight=weight_of_sequences(number_matrix,threshold)
-    frequencies=zeros(Float32,q*length(number_matrix[1,:]))
-    for j in 1:length(number_matrix[:,1])
-    	for i in 1:length(number_matrix[1,:])
-    		frequencies[(i-1)*q+number_matrix[j,i]]+=weight[j]
-   	end
-    end
-    frequencies=frequencies/sum(weight) 
-    return (1-Float32(pseudo_count))*frequencies.+Float32(pseudo_count/q)
-end
+
+
+
 
 
 
@@ -421,70 +536,7 @@ end
 
 
 
-function E_A_A(q,pseudo_count,number,number_matrix,filename)
-    edge_list=zeros(Int64,0,2)
-    n_edges=0
-    n_fully_connected_edges=Int64(length(number_matrix[1,:])*(length(number_matrix[1,:])-1)*0.5)
-    contact_list=zeros(Int64,length(number_matrix[1,:]),length(number_matrix[1,:]))
-    site_degree=zeros(Int64,length(number_matrix[1,:]))
-    likelihood_gain_vector=Float32[]
-    Jij_couplings=zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]),q*q) 
-    h_local=log.(freq_reweighted(number_matrix,q,pseudo_count,0.8))
-    sequences=zeros(Int8,number,length(number_matrix[1,:]))
-    fij_target=fij_reweighted(number_matrix,q,pseudo_count,0.8)
-    cij_target=correlation_reweighted(number_matrix,q,0,0.8) 
-    score_vector=Float32[]
-    contact_matrix=zeros(Int8,length(number_matrix[1,:]),length(number_matrix[1,:]))
-    log_z=Float32(0)
-    println("Fully connected model has ",n_fully_connected_edges," edges and a score around ~ 0.95")
-    open(filename, "w") do f  
-    write(f,"Fully connected model has ","$(n_fully_connected_edges)"," edges and a score around ~ 0.95")  
-    for i in 1:10000
-    	 flush(stdout)   
-    	 flush(f)                           
-         sequences=gibbs_sampling(q,h_local,Jij_couplings,sequences,site_degree,contact_list,5)
-         pij_training=fij_two_point(sequences[1:number-2000,:],q,pseudo_count)
-         pij_lgz=fij_two_point(sequences[number-1999:end,:],q,0)  
-         if (i-1)%15==0 && i!=1
-            cij_model=correlation_two_point(sequences,q,0)  
-            score=cor(cij_target,cij_model)    
-            score_vector=push!(score_vector,score)
-            score=round(score;digits=3)            
-            print("   Score = ",score) 
-            write(f,"   Score = ","$(score)")
-            energy1=-sum(fij_two_point(sequences,q,0).*Jij_couplings)-sum(freq_single_point(sequences,q,0).*h_local)               
-            print("    <E> = ",round(energy1;digits=2), "    log(Z) = ",round(log_z;digits=2)) 
-            print("   S = ",round(log_z+energy1;digits=2))
-	    write(f,"    <E> = ","$(round(energy1;digits=2))", "    log(Z) = ","$(round(log_z;digits=2))")  
-            write(f,"   S = ","$(round(log_z+energy1;digits=2))")                 
-            if score >=Float32(0.95)
-            	println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score;digits=2))")
-            	write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score;digits=2)) \n")
-            	return score_vector ,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
-            end        
-         end     
-         added_edge,likelihood_gain=max_kl_divergence(fij_target,pij_training)       
-         likelihood_gain_vector=push!(likelihood_gain_vector,likelihood_gain)
-         print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
-         write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
-         if contact_matrix[added_edge[1],added_edge[2]]==0
-            n_edges+=1
-            site_degree[added_edge[1]]+=1
-	    site_degree[added_edge[2]]+=1   
-	    contact_list[site_degree[added_edge[1]],added_edge[1]]=added_edge[2]
-	    contact_list[site_degree[added_edge[2]],added_edge[2]]=added_edge[1]
-	    contact_matrix[added_edge[1],added_edge[2]]=1
-	    edge_list=vcat(edge_list,[added_edge[1],added_edge[2]]')
-        end
-        print("   edges: ",n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    )
-        write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    ) 
-        log_z+=log(sum((fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:])).*      (pij_lgz[added_edge[1],added_edge[2],:])))    
-        Jij_update=log.(fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:]))
-        Jij_couplings[added_edge[1],added_edge[2],:]+=Jij_update     
-    end  
-    end
-    return score_vector,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
-end
+
 
 
 

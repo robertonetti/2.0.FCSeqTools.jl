@@ -130,37 +130,37 @@ end
 
 function tertiary_plot_tools(len,filename,limit_contact_distance)
 
-f = open(filename)                       
-lines=readlines(f) 
+	f = open(filename)                       
+		lines=readlines(f) 
 
-file_copy=[]
-copy=lines
+	file_copy=[]
+	copy=lines
 
-for i in 1:length(copy)
-    file_copy=push!(file_copy,[])
-end
+	for i in 1:length(copy)
+   		file_copy=push!(file_copy,[])
+	end
 
-for i in 1:length(copy)    
-file_copy[i]=split(copy[i],[' ','[',']',','])     
-end
+	for i in 1:length(copy)    
+		file_copy[i]=split(copy[i],[' ','[',']',','])     
+	end
 
-distance_matrix=zeros(len,len)
-for i in 2:length(file_copy)
-    distance_matrix[parse.(Int64,file_copy[i][3]),parse.(Int64,file_copy[i][7])]=parse.(Float64,file_copy[i][10])
-end
+	distance_matrix=zeros(len,len)
+	for i in 2:length(file_copy)
+    	distance_matrix[parse.(Int64,file_copy[i][3]),parse.(Int64,file_copy[i][7])]=parse.(Float64,file_copy[i][10])
+	end
 
-contact_matrix=zeros(len,len)
-contact_list=zeros(Int8,0,2)
-for i in 1:len
-    for j in i+4:len
-        if distance_matrix[i,j]<limit_contact_distance && distance_matrix[i,j]!=0                      
-            contact_matrix[i,j]=distance_matrix[i,j]
-            contact_list=vcat(contact_list,[i,j]')
-        end
-    end
-end
+	contact_matrix=zeros(len,len)
+	contact_list=zeros(Int8,0,2)
+	for i in 1:len
+    	for j in i+4:len
+        	if distance_matrix[i,j]<limit_contact_distance && distance_matrix[i,j]!=0                      
+            	contact_matrix[i,j]=distance_matrix[i,j]
+            	contact_list=vcat(contact_list,[i,j]')
+        	end
+    	end
+	end
 
-return contact_list, contact_matrix
+	return contact_list, contact_matrix
 end
 
 
