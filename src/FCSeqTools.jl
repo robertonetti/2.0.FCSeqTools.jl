@@ -1,7 +1,5 @@
 module FCSeqTools
 
-
-
 using Distances
 using StatsBase
 using Random
@@ -44,7 +42,7 @@ function freq_reweighted(number_matrix, q, pseudo_count, threshold)
     end
     frequencies = frequencies/sum(weight) # normalize with weights
     # pseudo count does not allow frequencies to be zero and let the log explode
-    return (1 - Float32(pseudo_count)) * frequencies. + Float32(pseudo_count / q)
+    return (1 - Float32(pseudo_count)) * frequencies .+ Float32(pseudo_count / q)
 end
 
 function fij_reweighted(number_matrix, q, pseudo_count, threshold) 
