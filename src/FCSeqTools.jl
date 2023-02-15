@@ -8,8 +8,9 @@ using Random
 using Statistics
 using ExportAll
 
-function weight_of_sequences(number_matrix,threshold)
+function weight_of_sequences(number_matrix, threshold)
     """
+    Definisce un peso per ogni sequenza del MSA.
     Conta quante sequenze sono simili sopra una determinata soglia. Se sopra la soglia, aumenta il peso corrispondente ad esse.
     Infine ridefinisce il peso = 1/peso : cosicchè le sequenze molto simili non abbiano molta importanza.
     """
@@ -29,11 +30,10 @@ end
 
 function freq_reweighted(number_matrix, q, pseudo_count, threshold)
     """
+    Computes single site frequencies considering the weights of the sequences.
 
     Parameters
     ----------
-
-
     """
     weight = weight_of_sequences(number_matrix, threshold)
     frequencies = zeros(Float32, q*length(number_matrix[1,:]))
@@ -47,99 +47,255 @@ function freq_reweighted(number_matrix, q, pseudo_count, threshold)
     return (1 - Float32(pseudo_count)) * frequencies. + Float32(pseudo_count / q)
 end
 
-function fij_reweighted(number_matrix,q,pseudo_count,threshold) 
-    weight=weight_of_sequences(number_matrix,threshold)
-    fij=zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]),q^2)
-    for i1 in 1:length(number_matrix[:,1])
-        for i2 in 1: length(number_matrix[1,:])
-            for i3 in i2+1:length(number_matrix[1,:])
-                fij[i2,i3,(number_matrix[i1,i2]-1)*q+number_matrix[i1,i3]]+=weight[i1]
+function fij_reweighted(number_matrix, q, pseudo_count, threshold) 
+    """
+    Computes two sites frequencies with weights.
+    """
+    weight = weight_of_sequences(number_matrix, threshold)
+    fij = zeros(Float32, length(number_matrix[1,:]), length(number_matrix[1,:]), q^2)
+    for i1 in 1:length(number_matrix[:,1]) # loop over m ∈ M
+        for i2 in 1: length(number_matrix[1,:]) # loop over i ∈ L
+            for i3 in i2 + 1:length(number_matrix[1,:]) # loop over j ∈ L, j >= i 
+                fij[i2, i3, (number_matrix[i1, i2] - 1)*q + number_matrix[i1, i3]] += weight[i1]
             end
         end
     end
-    fij=fij/sum(weight)
-    return  (1-Float32(pseudo_count))*fij.+Float32((pseudo_count)/(q^2))
+    fij = fij/sum(weight)
+    return  (1 - Float32(pseudo_count))*fij .+ Float32((pseudo_count)/(q^2))
+end
+
+function correlation_reweighted(number_matrix, q, pseudo_count, threshold)  
+    """
+    Computes correlations
+    """
+    L = length(number_matrix[1,:]) 
+    fij = fij_reweighted(number_matrix, q, pseudo_count, threshold) # two points
+    frequencies = freq_reweighted(number_matrix,q,pseudo_count,threshold) # single site
+    correlation = zeros(Float32, q * q * Int64(L * (L - 1)/2))
+    counter = 1
+    for i in 1:length(number_matrix[1,:])
+        for j in i + 1:length(number_matrix[1,:])
+            for k1 in 1:q
+                for k2 in 1:q
+                    correlation[counter] = fij[i, j, (k1 - 1)*q + k2] - (frequencies[(i - 1)*q + k1]*frequencies[(j - 1)*q + k2])
+                    counter += 1
+                end
+            end
+        end
+    end
+    return  correlation
+end
+
+function gibbs_sampling(q, h_local, Jij, sequences, site_degree, contact_list, sweeps)
+    """
+    Gibbs sampling of the MSA, for 5 sweeps.
+    """
+    w = zeros(Float32, q) 
+    w2 = zeros(Float32, q) 
+    rows = length(sequences[:,1])
+    columns = length(sequences[1,:])
+    for i3 in 1: sweeps*columns 
+        if i3 % columns == 0  # se sto all'ultimo elemento di una riga
+            i2 = columns      # metti i2 = L
+        else                  # se sono nel mezzo di una riga
+            i2 = i3 % columns # metti i2 = l ∈ L corrispondente alla posizione considerata
+        end
+        w2 = h_local[q*(i2 - 1) + 1: q*(i2 - 1) + q] # contiene tutti i campi locali della posizione i2 per ogni q
+        for i1 in 1:rows 
+            copy!(w, w2)
+            # aggiungi l'energia di interazione con in contatti
+            for i5 in contact_list[1: site_degree[i2], i2] # for i5 ∈ δi2
+                for i4 in 1:q
+                    if i2 < i5
+                        w[i4] += Jij[i2, i5, q*(i4 - 1) + sequences[i1, i5]]
+                    elseif i2 > i5
+                        w[i4] += Jij[i5, i2, q*(sequences[i1, i5] - 1) + i4]
+                    end
+                end
+            end
+            sequences[i1,i2] = sample(1:q, Weights(exp.(w)))
+        end
+    end
+    return sequences
+end
+
+function fij_two_point(number_matrix, q, pseudo_count)   
+    """
+    Compute two points freq. without weights.
+    """
+    fij = zeros(Float32, length(number_matrix[1,:]), length(number_matrix[1,:]), q^2)
+    for i1 in 1: length(number_matrix[:,1]) # i1 ∈ M
+        for i2 in 1: length(number_matrix[1,:]) # i2 ∈ L
+            for i3 in i2 + 1: length(number_matrix[1,:]) # i3 ∈ i2+1 : L
+                fij[i2, i3, (number_matrix[i1, i2] - 1)*q + number_matrix[i1, i3]] += 1
+            end
+        end
+    end
+    fij = fij/length(number_matrix[:,1])
+    return  (1 - Float32(pseudo_count))*fij .+ Float32((pseudo_count)/(q^2))
+end
+
+function freq_single_point(number_matrix, q, pseudo_count)
+    """
+    Computes single site freq. without weights.
+    """
+    frequencies = zeros(Float32, q*length(number_matrix[1, :]))
+    for j in 1:length(number_matrix[:,1]) # j ∈ L
+    	for i in 1:length(number_matrix[1,:]) # i ∈ M
+    		frequencies[(i - 1)*q + number_matrix[j, i]] += 1
+   	    end
+    end
+    frequencies=frequencies/length(number_matrix[:,1]) 
+    return (1-Float32(pseudo_count))*frequencies.+Float32(pseudo_count/q)
+end
+
+function correlation_two_point(number_matrix,q,pseudo_count)  
+    """
+    Computes correlations without weights.
+    """
+    L = length(number_matrix[1,:]) 
+    fij = fij_two_point(number_matrix, q, pseudo_count)
+    frequencies = freq_single_point(number_matrix, q, pseudo_count)
+    correlation = zeros(Float32,q*q*Int64(L*(L - 1)/2))
+    counter = 1
+    for i in 1:length(number_matrix[1,  :])
+        for j in i + 1: length(number_matrix[1, :])
+            for k1 in 1: q
+                for k2 in 1: q
+                    correlation[counter] = fij[i, j, (k1 - 1)*q + k2] - (frequencies[(i - 1)*q + k1]*frequencies[(j - 1)*q + k2])
+                    counter += 1
+                end
+            end
+        end
+    end
+  return correlation
+end
+
+function max_kl_divergence(fij, pij)
+    """
+    Computes the matrix of KL distances. Then returns the argmax (edge (i,j)) and the value of the Distance.
+    """
+    L = length(fij[1,:,1])
+    kl_matrix = zeros(Float32, L, L)
+    for i in 1:L
+        for j in i + 1:L
+            kl_matrix[i, j] = Distances.kl_divergence(fij[i, j, :], pij[i, j, :])
+        end
+    end
+    return  argmax(kl_matrix), maximum(kl_matrix)
 end
 
 function E_A_A(q, pseudo_count, number, number_matrix, filename)
     """
-
     Parameters
     ----------
     q (int): number of aminoacids/nucletodides
-    pseudo_count (float):
+    pseudo_count (float): pseudo_count does not allow frequencies to be zero and let the log explode
     number (int):
-
-
-
     """
-    edge_list = zeros(Int64,0,2)
+    edge_list = zeros(Int64, 0, 2)
     n_edges = 0
     n_fully_connected_edges = Int64(length(number_matrix[1,:])*(length(number_matrix[1,:]) - 1)*0.5)
-    contact_list = zeros(Int64,length(number_matrix[1,:]),length(number_matrix[1,:]))
-    site_degree = zeros(Int64,length(number_matrix[1,:])) # per ognuno mette il degree del sito
+    contact_list = zeros(Int64, length(number_matrix[1,:]), length(number_matrix[1,:]))
+    site_degree = zeros(Int64, length(number_matrix[1,:])) # per ognuno mette il degree del sito
     likelihood_gain_vector = Float32[]
-    Jij_couplings = zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]), q*q) 
+    # initialize in Profile Model
+    Jij_couplings = zeros(Float32, length(number_matrix[1,:]), length(number_matrix[1,:]), q*q) 
     # initialize local fields with frequencies
     h_local = log.(freq_reweighted(number_matrix, q, pseudo_count, 0.8)) 
 
+    # compute two points frequencies
     sequences = zeros(Int8, number, length(number_matrix[1,:]))
     fij_target = fij_reweighted(number_matrix, q, pseudo_count, 0.8)
-    cij_target=correlation_reweighted(number_matrix,q,0,0.8) 
-    score_vector=Float32[]
-    contact_matrix=zeros(Int8,length(number_matrix[1,:]),length(number_matrix[1,:]))
-    log_z=Float32(0)
-    println("Fully connected model has ",n_fully_connected_edges," edges and a score around ~ 0.95")
+    # compute two sites correlations
+    cij_target = correlation_reweighted(number_matrix, q, 0, 0.8) 
+
+    score_vector = Float32[]
+    contact_matrix = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]))
+    log_z = Float32(0)
+    println("Fully connected model has ", n_fully_connected_edges, " edges and a score around ~ 0.95")
     open(filename, "w") do f  
-    write(f,"Fully connected model has ","$(n_fully_connected_edges)"," edges and a score around ~ 0.95")  
+    write(f, "Fully connected model has ","$(n_fully_connected_edges)", " edges and a score around ~ 0.95")  
     for i in 1:10000
-    	 flush(stdout)   
-    	 flush(f)                           
-         sequences=gibbs_sampling(q,h_local,Jij_couplings,sequences,site_degree,contact_list,5)
-         pij_training=fij_two_point(sequences[1:number-2000,:],q,pseudo_count)
-         pij_lgz=fij_two_point(sequences[number-1999:end,:],q,0)  
-         if (i-1)%15==0 && i!=1
-            cij_model=correlation_two_point(sequences,q,0)  
-            score=cor(cij_target,cij_model)    
-            score_vector=push!(score_vector,score)
-            score=round(score;digits=3)            
+        flush(stdout)   
+        flush(f)                   
+        
+        # samples the MSA with gibbs sampling                                                      #sweeps
+        sequences = gibbs_sampling(q, h_local, Jij_couplings, sequences, site_degree, contact_list,   5)
+        # two points frequencies
+        pij_training = fij_two_point(sequences[1: number - 2000, :], q, pseudo_count)
+        # Useful for Entropy computation
+        pij_lgz = fij_two_point(sequences[number - 1999: end, :], q, 0)  
+
+        if (i - 1) % 15 == 0 && i != 1
+            # compute two-sites correlations of the model
+            cij_model = correlation_two_point(sequences, q,  0)  
+            score = cor(cij_target, cij_model) # copmute pearson correlations between model and data 
+            score_vector = push!(score_vector, score)
+            score = round(score; digits=3)            
             print("   Score = ",score) 
             write(f,"   Score = ","$(score)")
-            energy1=-sum(fij_two_point(sequences,q,0).*Jij_couplings)-sum(freq_single_point(sequences,q,0).*h_local)               
-            print("    <E> = ",round(energy1;digits=2), "    log(Z) = ",round(log_z;digits=2)) 
-            print("   S = ",round(log_z+energy1;digits=2))
-	    write(f,"    <E> = ","$(round(energy1;digits=2))", "    log(Z) = ","$(round(log_z;digits=2))")  
-            write(f,"   S = ","$(round(log_z+energy1;digits=2))")                 
-            if score >=Float32(0.95)
-            	println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score;digits=2))")
-            	write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score;digits=2)) \n")
-            	return score_vector ,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
+
+            # Average energy over the sampled distribution of sequences
+            energy1 = -sum(fij_two_point(sequences,q, 0).*Jij_couplings) - sum(freq_single_point(sequences,q,0).*h_local)               
+            
+            print("  <E> = ",round(energy1; digits=2), "  log(Z) = ",round(log_z; digits=2)) 
+            print("   S = ",round(log_z + energy1; digits=2))
+            write(f,"  <E> = ","$(round(energy1; digits=2))", "  log(Z) = ","$(round(log_z; digits=2))")  
+            write(f,"   S = ","$(round(log_z + energy1; digits=2))")                 
+            if score >= Float32(0.95)
+                println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score; digits=2))")
+                write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score; digits=2)) \n")
+                return score_vector ,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
             end        
-         end     
-         added_edge,likelihood_gain=max_kl_divergence(fij_target,pij_training)       
-         likelihood_gain_vector=push!(likelihood_gain_vector,likelihood_gain)
-         print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
-         write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
-         if contact_matrix[added_edge[1],added_edge[2]]==0
-            n_edges+=1
-            site_degree[added_edge[1]]+=1
-	    site_degree[added_edge[2]]+=1   
-	    contact_list[site_degree[added_edge[1]],added_edge[1]]=added_edge[2]
-	    contact_list[site_degree[added_edge[2]],added_edge[2]]=added_edge[1]
-	    contact_matrix[added_edge[1],added_edge[2]]=1
-	    edge_list=vcat(edge_list,[added_edge[1],added_edge[2]]')
+        end     
+        # added edge and its likelihood gain
+        added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training)       
+        likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
+
+        print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
+        write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
+        # update contact matrix, site degree and contact list, edge list
+        if contact_matrix[added_edge[1], added_edge[2]] == 0
+            n_edges += 1
+            site_degree[added_edge[1]] += 1
+            site_degree[added_edge[2]] += 1   
+            contact_list[site_degree[added_edge[1]], added_edge[1]] = added_edge[2]
+            contact_list[site_degree[added_edge[2]],added_edge[2]] = added_edge[1]
+            contact_matrix[added_edge[1], added_edge[2]] = 1
+            edge_list = vcat(edge_list, [added_edge[1], added_edge[2]]' )
         end
-        print("   edges: ",n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    )
+        print("   edges: ", n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    )
         write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    ) 
-        log_z+=log(sum((fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:])).*      (pij_lgz[added_edge[1],added_edge[2],:])))    
-        Jij_update=log.(fij_target[added_edge[1],added_edge[2],:]./(pij_training[added_edge[1],added_edge[2],:]))
-        Jij_couplings[added_edge[1],added_edge[2],:]+=Jij_update     
+        # update the log of Z 
+        log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))    
+        # update Jij coupling
+        Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:]))
+        Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
     end  
     end
-    return score_vector,likelihood_gain_vector, sequences,Jij_couplings,h_local,contact_list,site_degree,edge_list
+    return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list
 end
 
 
+function rna_cm_model_generation(threshold, pseudo_count, number, number_matrix, ss_contact_matrix)	
+    """
+
+    """
+    sec_proxy_list=findall(!iszero, ss_contact_matrix)
+    proxy_idx_1 = getindex.(sec_proxy_list, 1)
+    proxy_idx_2 = getindex.(sec_proxy_list, 2)
+    sec_contacts=hcat(proxy_idx_1,proxy_idx_2)
+    fij=fij_reweighted(number_matrix,5,pseudo_count,threshold)
+    sequences=profile_model_generation(threshold,5,pseudo_count,number,number_matrix)
+    for i in 1:number
+        for j in 1:length(sec_contacts[:,1])
+            w=fij[sec_contacts[j,1],sec_contacts[j,2],5*((sequences[i,sec_contacts[j,1]])-1)+1:5*((sequences[i,sec_contacts[j,1]])-1)+5]
+            sequences[i,sec_contacts[j,2]]=sample(1:5,Weights(w))
+        end
+    end
+    return sequences
+end
 
 
 
@@ -316,52 +472,6 @@ end
 
 
 
-function freq_single_point(number_matrix,q,pseudo_count)
-    frequencies=zeros(Float32,q*length(number_matrix[1,:]))
-    for j in 1:length(number_matrix[:,1])
-    	for i in 1:length(number_matrix[1,:])
-    		frequencies[(i-1)*q+number_matrix[j,i]]+=1
-   	end
-    end
-    frequencies=frequencies/length(number_matrix[:,1]) 
-    return (1-Float32(pseudo_count))*frequencies.+Float32(pseudo_count/q)
-end
-
-
-
-function fij_two_point(number_matrix,q,pseudo_count)   
-    fij=zeros(Float32,length(number_matrix[1,:]),length(number_matrix[1,:]),q^2)
-    for i1 in 1:length(number_matrix[:,1])
-        for i2 in 1: length(number_matrix[1,:])
-            for i3 in i2+1:length(number_matrix[1,:])
-                fij[i2,i3,(number_matrix[i1,i2]-1)*q+number_matrix[i1,i3]]+=1
-            end
-        end
-    end
-    fij=fij/length(number_matrix[:,1])
-    return  (1-Float32(pseudo_count))*fij.+Float32((pseudo_count)/(q^2))
-end
-
-
-
-function correlation_two_point(number_matrix,q,pseudo_count)  
-    L=length(number_matrix[1,:]) 
-    fij=fij_two_point(number_matrix,q,pseudo_count)
-    frequencies=freq_single_point(number_matrix,q,pseudo_count)
-    correlation=zeros(Float32,q*q*Int64(L*(L-1)/2))
-    counter=1
-    for i in 1:length(number_matrix[1,:])
-        for j in i+1:length(number_matrix[1,:])
-            for k1 in 1:q
-                for k2 in 1:q
-                correlation[counter]=fij[i,j,(k1-1)*q+k2]-(frequencies[(i-1)*q+k1]*frequencies[(j-1)*q+k2])
-                counter+=1
-                end
-            end
-        end
-    end
-  return  correlation
-end
 
 
 
@@ -377,24 +487,16 @@ end
 
 
 
-function correlation_reweighted(number_matrix,q,pseudo_count,threshold)  
-    L=length(number_matrix[1,:]) 
-    fij=fij_reweighted(number_matrix,q,pseudo_count,threshold) 
-    frequencies=freq_reweighted(number_matrix,q,pseudo_count,threshold)
-    correlation=zeros(Float32,q*q*Int64(L*(L-1)/2))
-    counter=1
-    for i in 1:length(number_matrix[1,:])
-        for j in i+1:length(number_matrix[1,:])
-            for k1 in 1:q
-                for k2 in 1:q
-                correlation[counter]=fij[i,j,(k1-1)*q+k2]-(frequencies[(i-1)*q+k1]*frequencies[(j-1)*q+k2])
-                counter+=1
-                end
-            end
-        end
-    end
-  return  correlation
-end
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -404,16 +506,7 @@ end
 
 
 
-function max_kl_divergence(fij,pij)
-    L=length(fij[1,:,1])
-    kl_matrix=zeros(Float32,L,L)
-    for i in 1:L
-        for j in i+1:L
-            kl_matrix[i,j]=Distances.kl_divergence(fij[i,j,:],pij[i,j,:])
-        end
-    end
-    return  argmax(kl_matrix),maximum(kl_matrix)
-end
+
 
 
 
@@ -504,35 +597,7 @@ end
 
 
 
-function gibbs_sampling(q,h_local,Jij,sequences,site_degree,contact_list,sweeps)
-    w=zeros(Float32,q) 
-    w2=zeros(Float32,q) 
-    rows=length(sequences[:,1])
-    columns=length(sequences[1,:])
-        for i3 in 1:sweeps*columns
-            if i3%columns==0
-                i2=columns
-            else
-                i2=i3%columns
-            end
-            w2=h_local[q*(i2-1)+1:q*(i2-1)+q]  
-            for i1 in 1:rows 
-            copy!(w,w2)
-                      
-                for i5 in contact_list[1:site_degree[i2],i2]
-                for i4 in 1:q
-                    if i2<i5
-                            w[i4]+=Jij[i2,i5,q*(i4-1)+sequences[i1,i5]]
-                    elseif i2>i5
-                            w[i4]+=Jij[i5,i2,q*(sequences[i1,i5]-1)+i4]
-                    end
-                end
-             end
-            sequences[i1,i2]=sample(1:q,Weights(exp.(w)))
-        end
-    end
-    return sequences
-end
+
 
 
 
@@ -552,21 +617,7 @@ end
 
 
 
-function rna_cm_model_generation(threshold,pseudo_count,number,number_matrix,ss_contact_matrix)	
-    sec_proxy_list=findall(!iszero, ss_contact_matrix)
-    proxy_idx_1 = getindex.(sec_proxy_list, 1)
-    proxy_idx_2 = getindex.(sec_proxy_list, 2)
-    sec_contacts=hcat(proxy_idx_1,proxy_idx_2)
-    fij=fij_reweighted(number_matrix,5,pseudo_count,threshold)
-    sequences=profile_model_generation(threshold,5,pseudo_count,number,number_matrix)
-    for i in 1:number
-        for j in 1:length(sec_contacts[:,1])
-            w=fij[sec_contacts[j,1],sec_contacts[j,2],5*((sequences[i,sec_contacts[j,1]])-1)+1:5*((sequences[i,sec_contacts[j,1]])-1)+5]
-            sequences[i,sec_contacts[j,2]]=sample(1:5,Weights(w))
-        end
-    end
-    return sequences
-end
+
 
 
 
