@@ -209,7 +209,9 @@ function single_entries_kl_divergence(q, max_fij, max_pij)
         D_kl[(a - 1)*q + b] = Distances.kl_divergence(f, p) 
         end
     end
-    return D_kl
+    #(a - 1) * q + b = x
+
+    return D_kl, argmax(D_kl), maximum(D_kl)
 end
 
 
@@ -244,11 +246,13 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
     println("Fully connected model has ", n_fully_connected_edges, " edges and a score around ~ 0.95")
 
     # RN ##############################################################################################
-    ave_singular_contribs = 0
-    sigma_singular_contribs = 0
-    mom2 = 0
-    DKL_picture = []
+    
     discr_counter = 0
+    single_likelihood_gain_vector = Float32[]
+    DKL_picture = []
+    contact_matrix_2 = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]), q*q)
+    n_elements = 0
+    n_fully_connected_elements = Int64(length(number_matrix[1,:])*(length(number_matrix[1,:]) - 1)*0.5*q*q)
     ###################################################################################################
 
     open(filename, "w") do f  
@@ -286,7 +290,7 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
                         if score >= Float32(0.95)
                             println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score; digits=2))")
                             write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score; digits=2)) \n")
-                            return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list
+                            return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector
                         end        
                     end     
 
@@ -295,7 +299,8 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
 
                     # RN ##################################################################################################
                     if stats == true
-                        max_single_DKL = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
+                        max_single_DKL, ij_ab, likel_gain_ijab = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
+                        println("\nij_ab = ", ij_ab)
                         write(f1, "\n$(max_single_DKL)")  
                         write(f2, "\n$(likelihood_gain)")
                         println("\ncomparison - total: ", likelihood_gain, " sum of singles: ", sum(max_single_DKL),"\n")
@@ -321,10 +326,31 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
                     
 
                     likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
+                    ################################################################################################### 
+                    single_likelihood_gain_vector = push!(single_likelihood_gain_vector, likel_gain_ijab)
+                    ################################################################################################### 
 
                     print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
                     write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
+
+                    #print("\n[a = ", ij_ab[1] , " b = ", ij_ab[2], "]  iter: $i" ) 
                     # update contact matrix, site degree and contact list, edge list
+
+
+                    ################################################################################################### 
+                    if contact_matrix_2[added_edge[1], added_edge[2], ij_ab] == 0
+                        n_elements += 1
+                        contact_matrix_2[added_edge[1], added_edge[2], ij_ab] = 1                       
+                    end
+                    ################################################################################################### 
+
+
+
+
+
+
+
+
                     if contact_matrix[added_edge[1], added_edge[2]] == 0
                         n_edges += 1
                         site_degree[added_edge[1]] += 1
@@ -334,18 +360,24 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
                         contact_matrix[added_edge[1], added_edge[2]] = 1
                         edge_list = vcat(edge_list, [added_edge[1], added_edge[2]]' )
                     end
-                    print("   edges: ", n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    )
-                    write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%"    ) 
+                    print("   edges: ", n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%", "   ","complex: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%"    )
+
+                    write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%"    ) 
                     # update the log of Z 
                     log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))    
                     # update Jij coupling
-                    Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:]))
+                    ###################################################################################################
+                    largest_component = zeros(q*q)
+                    largest_component[ij_ab] = 1
+                    Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:])) .* largest_component
+                    
+                    #print("\n Jij_update: ", Jij_update)
                     Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
                 end
             end
         end
     end 
-    return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list
+    return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector
 end
 
 
