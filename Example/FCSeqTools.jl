@@ -213,7 +213,7 @@ function single_entries_kl_divergence(q, max_fij, max_pij)
 end
 
 
-function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stat)
+function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
     """
     Parameters
     ----------
@@ -242,22 +242,23 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stat)
     contact_matrix = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]))
     log_z = Float32(0)
     println("Fully connected model has ", n_fully_connected_edges, " edges and a score around ~ 0.95")
-    ###################################################################################################
+
+    # RN ##############################################################################################
     ave_singular_contribs = 0
     sigma_singular_contribs = 0
     mom2 = 0
+    DKL_picture = []
+    discr_counter = 0
     ###################################################################################################
+
     open(filename, "w") do f  
         open("single_dkl.txt", "w") do f1
             open("total_dkl.txt", "w") do f2
                 write(f, "Fully connected model has ","$(n_fully_connected_edges)", " edges and a score around ~ 0.95")          
 
                 for i in 1:n_step  #10000
-                      
-
                     flush(stdout)   
                     flush(f)    
-                    #flush(f1)                    
                     
                     # samples the MSA with gibbs sampling                                                      #sweeps
                     sequences = gibbs_sampling(q, h_local, Jij_couplings, sequences, site_degree, contact_list,   5)
@@ -290,46 +291,34 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stat)
                     end     
 
                     # added edge and its likelihood gain
-                    added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training) 
+                    added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training)
 
-                    ######################################################################################################
+                    # RN ##################################################################################################
+                    if stats == true
                         max_single_DKL = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
                         write(f1, "\n$(max_single_DKL)")  
                         write(f2, "\n$(likelihood_gain)")
-                        println("       comparison - total: ", likelihood_gain, " sum of singles: ", sum(max_single_DKL),"\n")
-                    ######################################################################################################
-                    
-
-                    ###################################################################################################
-                    if stat == True
-                        # compute average contribution of each component of the J_ij
-                        """step_ave = sort(max_single_DKL, rev=True) / sum(max_single_DKL)
-                        ave_singular_contribs += step_ave
-                        mom2 += step_ave^2"""
-                        discr = (i - 1) % 100
-                        if discr >= 0 && discr <= 4 && i != 1
-
-                        
-                        
-                            f_name = "single_contribs_step"*string(i)*".txt"
-                            open(f_name, "w") do f3
-                                if discr = (i - 1) % 100 == 0
-                                    f_name = "single_contribs_step"*string(i)*".txt"
-                                    open(f_name, "w") do f3
+                        println("\ncomparison - total: ", likelihood_gain, " sum of singles: ", sum(max_single_DKL),"\n")
+                        discr = (i - 1) % 25
+                        if discr >= 0 && discr <= 4 && i != 1    
+                            discr_counter += 1
+                            push!(DKL_picture, max_single_DKL)  
+                        end
+                        if discr_counter == 5
+                            # write on file
+                            f_name = "single_contribs_step"*string(i - 6)*".txt"
+                            path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example/DKLs"
+                            file = open(joinpath(path, f_name), "w")
+                                for dkl in DKL_picture
+                                    write(file, "$(dkl)\n")
+                                end
+                            close(file)
+                            discr_counter = 0
+                            DKL_picture = []
+                        end   
                     end
                     ################################################################################################### 
                     
-                        
-
-                        
-                        
-                            
-                            open(f_name)
-                            a = 
-                            # ogni 5 step, salvati il single e il total gain
-                            # ad ogni step ordinati il single, dividilo per la somma. conserva cosi come singolo e come media con errore
-                    end
-
 
                     likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
 
