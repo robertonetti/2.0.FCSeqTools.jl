@@ -215,6 +215,59 @@ function single_entries_kl_divergence(q, max_fij, max_pij)
 end
 
 
+function statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f_name, step=100, n_pictures=10)
+    max_single_DKL, ij_ab, single_likelihood_gain = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
+    println("\nij_ab = ", ij_ab)
+    write(f_name, "\n$(max_single_DKL)")  
+    discr = (i - 1) % step
+    if discr >= 0 && discr <= (n_pictures - 1) && i != 1    
+        push!(DKL_picture, max_single_DKL)  
+        if discr == (n_pictures - 1)
+            f_name = "single_contribs_step"*string(i - 6)*".txt"
+            path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example/DKLs"
+            file = open(joinpath(path, f_name), "w")
+            [write(file, "$(dkl)\n") for dkl in DKL_picture ]
+            close(file)
+            discr_counter = 0
+            DKL_picture = []
+        end  
+    end
+    return single_likelihood_gain, max_single_DKL, ij_ab
+end
+
+function update_single_contact_matrix(single_contact_matrix, added_edge, ij_ab, n_elements)
+    if single_contact_matrix[added_edge[1], added_edge[2], ij_ab] == 0
+        n_elements += 1
+        single_contact_matrix[added_edge[1], added_edge[2], ij_ab] = 1                       
+    end
+end
+
+function update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
+    if contact_matrix[added_edge[1], added_edge[2]] == 0
+        n_edges += 1
+        site_degree[added_edge[1]] += 1
+        site_degree[added_edge[2]] += 1   
+        contact_list[site_degree[added_edge[1]], added_edge[1]] = added_edge[2]
+        contact_list[site_degree[added_edge[2]],added_edge[2]] = added_edge[1]
+        contact_matrix[added_edge[1], added_edge[2]] = 1
+        edge_list = vcat(edge_list, [added_edge[1], added_edge[2]]' )
+    end
+end
+
+function update_Jijab_couplings(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)   
+    largest_component = zeros(q*q)
+    largest_component[ij_ab] = 1
+    Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:])) .* largest_component
+    Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
+end
+
+
+
+
+
+
+
+
 function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
     """
     Parameters
@@ -250,7 +303,7 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
     discr_counter = 0
     single_likelihood_gain_vector = Float32[]
     DKL_picture = []
-    contact_matrix_2 = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]), q*q)
+    single_contact_matrix = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]), q*q)
     n_elements = 0
     n_fully_connected_elements = Int64(length(number_matrix[1,:])*(length(number_matrix[1,:]) - 1)*0.5*q*q)
     ###################################################################################################
@@ -296,83 +349,31 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
 
                     # added edge and its likelihood gain
                     added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training)
+                    likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
+                    write(f2, "\n$(likelihood_gain)")
 
                     # RN ##################################################################################################
-                    if stats == true
-                        max_single_DKL, ij_ab, likel_gain_ijab = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
-                        println("\nij_ab = ", ij_ab)
-                        write(f1, "\n$(max_single_DKL)")  
-                        write(f2, "\n$(likelihood_gain)")
-                        println("\ncomparison - total: ", likelihood_gain, " sum of singles: ", sum(max_single_DKL),"\n")
-                        discr = (i - 1) % 25
-                        if discr >= 0 && discr <= 4 && i != 1    
-                            discr_counter += 1
-                            push!(DKL_picture, max_single_DKL)  
-                        end
-                        if discr_counter == 5
-                            # write on file
-                            f_name = "single_contribs_step"*string(i - 6)*".txt"
-                            path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example/DKLs"
-                            file = open(joinpath(path, f_name), "w")
-                                for dkl in DKL_picture
-                                    write(file, "$(dkl)\n")
-                                end
-                            close(file)
-                            discr_counter = 0
-                            DKL_picture = []
-                        end   
-                    end
-                    ################################################################################################### 
-                    
-
-                    likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
-                    ################################################################################################### 
-                    single_likelihood_gain_vector = push!(single_likelihood_gain_vector, likel_gain_ijab)
+                    single_likelihood_gain, max_single_DKL, ij_ab = statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f1)
+                    println("\ncomparison - total: ", likelihood_gain, " sum of singles: ", sum(max_single_DKL),"\n")
+                    single_likelihood_gain_vector = push!(single_likelihood_gain_vector, single_likelihood_gain)
+                    update_single_contact_matrix(single_contact_matrix, added_edge, ij_ab, n_elements)
                     ################################################################################################### 
 
                     print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
                     write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
 
-                    #print("\n[a = ", ij_ab[1] , " b = ", ij_ab[2], "]  iter: $i" ) 
-                    # update contact matrix, site degree and contact list, edge list
-
-
-                    ################################################################################################### 
-                    if contact_matrix_2[added_edge[1], added_edge[2], ij_ab] == 0
-                        n_elements += 1
-                        contact_matrix_2[added_edge[1], added_edge[2], ij_ab] = 1                       
-                    end
-                    ################################################################################################### 
-
-
-
-
-
-
-
-
-                    if contact_matrix[added_edge[1], added_edge[2]] == 0
-                        n_edges += 1
-                        site_degree[added_edge[1]] += 1
-                        site_degree[added_edge[2]] += 1   
-                        contact_list[site_degree[added_edge[1]], added_edge[1]] = added_edge[2]
-                        contact_list[site_degree[added_edge[2]],added_edge[2]] = added_edge[1]
-                        contact_matrix[added_edge[1], added_edge[2]] = 1
-                        edge_list = vcat(edge_list, [added_edge[1], added_edge[2]]' )
-                    end
+    
+                    update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
+                
                     print("   edges: ", n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%", "   ","complex: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%"    )
-
                     write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%"    ) 
+                    
                     # update the log of Z 
                     log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))    
-                    # update Jij coupling
-                    ###################################################################################################
-                    largest_component = zeros(q*q)
-                    largest_component[ij_ab] = 1
-                    Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:])) .* largest_component
                     
-                    #print("\n Jij_update: ", Jij_update)
-                    Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
+                    # RN ##################################################################################################
+                    update_Jijab_couplings(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)
+                    ##################################################################################################  
                 end
             end
         end
