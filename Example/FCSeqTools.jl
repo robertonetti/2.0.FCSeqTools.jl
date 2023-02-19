@@ -217,7 +217,7 @@ end
 
 function statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f_name, step=100, n_pictures=10)
     max_single_DKL, ij_ab, single_likelihood_gain = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
-    println("\nij_ab = ", ij_ab)
+    #println("\nij_ab = ", ij_ab)
     write(f_name, "\n$(max_single_DKL)")  
     discr = (i - 1) % step
     if discr >= 0 && discr <= (n_pictures - 1) && i != 1    
@@ -240,6 +240,7 @@ function update_single_contact_matrix(single_contact_matrix, added_edge, ij_ab, 
         n_elements += 1
         single_contact_matrix[added_edge[1], added_edge[2], ij_ab] = 1                       
     end
+    return single_contact_matrix, n_elements
 end
 
 function update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
@@ -252,15 +253,31 @@ function update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree,
         contact_matrix[added_edge[1], added_edge[2]] = 1
         edge_list = vcat(edge_list, [added_edge[1], added_edge[2]]' )
     end
+    return contact_matrix, n_edges
 end
 
-function update_Jijab_couplings(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)   
+function update_Jijab_couplings_largest(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)   
     largest_component = zeros(q*q)
     largest_component[ij_ab] = 1
     Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:])) .* largest_component
     Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
 end
 
+function update_Jijab_couplings_cumulative(q, Jij_couplings, DKL_matrix, fij_target, pij_training, added_edge, single_contact_matrix, n_elements, fraction = 0.2)   
+    cumul = sum(DKL_matrix)
+    largest_component = zeros(q*q)
+    tot = 0
+    while tot <= cumul * fraction
+        ab = argmax(DKL_matrix)
+        tot += maximum(DKL_matrix)
+        DKL_matrix[ab] = 0
+        largest_component[ab] = 1
+        single_contact_matrix, n_elements = update_single_contact_matrix(single_contact_matrix, added_edge, ab, n_elements)
+    end
+    Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:])) .* largest_component
+    Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
+    return single_contact_matrix, n_elements
+end
 
 
 
@@ -268,7 +285,8 @@ end
 
 
 
-function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
+
+function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, method)
     """
     Parameters
     ----------
@@ -295,11 +313,11 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
 
     score_vector = Float32[]
     contact_matrix = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]))
+    n_edges = 0
+
     log_z = Float32(0)
-    println("Fully connected model has ", n_fully_connected_edges, " edges and a score around ~ 0.95")
 
     # RN ##############################################################################################
-    
     discr_counter = 0
     single_likelihood_gain_vector = Float32[]
     DKL_picture = []
@@ -307,79 +325,108 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats)
     n_elements = 0
     n_fully_connected_elements = Int64(length(number_matrix[1,:])*(length(number_matrix[1,:]) - 1)*0.5*q*q)
     ###################################################################################################
+    println("Fully connected model has ", n_fully_connected_edges, " edges, ", n_fully_connected_elements, " elements and a score around ~ 0.95")
+
 
     open(filename, "w") do f  
         open("single_dkl.txt", "w") do f1
             open("total_dkl.txt", "w") do f2
-                write(f, "Fully connected model has ","$(n_fully_connected_edges)", " edges and a score around ~ 0.95")          
+                open("iterations.txt", "w") do f3
+                    write(f, "Fully connected model has ","$(n_fully_connected_edges)", " edges and a score around ~ 0.95")          
 
-                for i in 1:n_step  #10000
-                    flush(stdout)   
-                    flush(f)    
-                    
-                    # samples the MSA with gibbs sampling                                                      #sweeps
-                    sequences = gibbs_sampling(q, h_local, Jij_couplings, sequences, site_degree, contact_list,   5)
-                    # two points frequencies
-                    pij_training = fij_two_point(sequences[1: number - 2000, :], q, pseudo_count)
-                    # Useful for Entropy computation
-                    pij_lgz = fij_two_point(sequences[number - 1999: end, :], q, 0)  
-
-                    if (i - 1) % 15 == 0 && i != 1
-                        # compute two-sites correlations of the model
-                        cij_model = correlation_two_point(sequences, q,  0)  
-                        score = cor(cij_target, cij_model) # copmute pearson correlations between model and data 
-                        score_vector = push!(score_vector, score)
-                        score = round(score; digits=3)            
-                        print("   Score = ",score) 
-                        write(f,"   Score = ","$(score)")
-
-                        # Average energy over the sampled distribution of sequences
-                        energy1 = - sum(fij_two_point(sequences,q, 0).*Jij_couplings) - sum(freq_single_point(sequences,q,0).*h_local)               
+                    for i in 1:n_step  #10000
+                        flush(stdout)   
+                        flush(f) 
+                        flush(f3)    
                         
-                        print("  <E> = ",round(energy1; digits=2), "  log(Z) = ",round(log_z; digits=2)) 
-                        print("   S = ",round(log_z + energy1; digits=2))
-                        write(f,"  <E> = ","$(round(energy1; digits=2))", "  log(Z) = ","$(round(log_z; digits=2))")  
-                        write(f,"   S = ","$(round(log_z + energy1; digits=2))")                 
-                        if score >= Float32(0.95)
-                            println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score; digits=2))")
-                            write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score; digits=2)) \n")
-                            return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector
-                        end        
-                    end     
+                        # samples the MSA with gibbs sampling                                                      #sweeps
+                        sequences = gibbs_sampling(q, h_local, Jij_couplings, sequences, site_degree, contact_list,   5)
+                        # two points frequencies
+                        pij_training = fij_two_point(sequences[1: number - 2000, :], q, pseudo_count)
+                        # Useful for Entropy computation
+                        pij_lgz = fij_two_point(sequences[number - 1999: end, :], q, 0)     
 
-                    # added edge and its likelihood gain
-                    added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training)
-                    likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
-                    write(f2, "\n$(likelihood_gain)")
+                        if i % 20 == 0 && i != 1
+                            # compute two-sites correlations of the model
+                            cij_model = correlation_two_point(sequences, q,  0)  
+                            score = cor(cij_target, cij_model) # copmute pearson correlations between model and data 
+                            score_vector = push!(score_vector, score)
+                            score = round(score; digits=3)   
+                            print("\niteration = ", i)         
+                            print(",   Score = ",score) 
+                            write(f,"   Score = ","$(score)")
 
-                    # RN ##################################################################################################
-                    single_likelihood_gain, max_single_DKL, ij_ab = statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f1)
-                    println("\ncomparison - total: ", likelihood_gain, " sum of singles: ", sum(max_single_DKL),"\n")
-                    single_likelihood_gain_vector = push!(single_likelihood_gain_vector, single_likelihood_gain)
-                    update_single_contact_matrix(single_contact_matrix, added_edge, ij_ab, n_elements)
-                    ################################################################################################### 
+                            # Average energy over the sampled distribution of sequences
+                            energy1 = - sum(fij_two_point(sequences,q, 0).*Jij_couplings) - sum(freq_single_point(sequences,q,0).*h_local)               
+                            
+                            print(",  <E> = ",round(energy1; digits=2), "  log(Z) = ",round(log_z; digits=2)) 
+                            print(",   S = ",round(log_z + energy1; digits=2))
+                            write(f,",  <E> = ","$(round(energy1; digits=2))", "  log(Z) = ","$(round(log_z; digits=2))")  
+                            write(f,",   S = ","$(round(log_z + energy1; digits=2))")     
+                                     #iter     #energy                            #log_z                         #Entropy                              #Score       #n edges      #n elements       #edge complexity                                               #elements complexity
+                            write(f3, "$(i) ", "$(round(energy1; digits=2)) ", "$(round(log_z; digits=2)) ", "$(round(log_z + energy1; digits=2)) ", "$(score) ","$(n_edges) ","$(n_elements) ", "$(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) ", "$(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) \n")
 
-                    print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
-                    write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
+                            if score >= Float32(0.95)
+                                println("\n \nThe selceted model has ",n_edges," edges and a score = $(round(score; digits=2))")
+                                write(f,"\n \nThe selceted model has ","$(n_edges)"," edges and a score = $(round(score; digits=2)) \n")
+                                return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector
+                            end        
+                        end 
+                        # added edge and its likelihood gain
+                        added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training)
+                        likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
+                        contact_matrix, n_edges = update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
+                        write(f2, "\n$(likelihood_gain)")
 
-    
-                    update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
-                
-                    print("   edges: ", n_edges, "   ","complex: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%", "   ","complex: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%"    )
-                    write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%"    ) 
-                    
-                    # update the log of Z 
-                    log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))    
-                    
-                    # RN ##################################################################################################
-                    update_Jijab_couplings(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)
-                    ##################################################################################################  
+                        # RN ##################################################################################################
+                        single_likelihood_gain, max_single_DKL, ij_ab = statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f1)
+                        single_likelihood_gain_vector = push!(single_likelihood_gain_vector, single_likelihood_gain)
+                        # update Jij couplings
+                        if method == "largest component"
+                            update_Jijab_couplings_largest(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)
+                            single_contact_matrix, n_elements = update_single_contact_matrix(single_contact_matrix, added_edge, ij_ab, n_elements)
+                        elseif method == "cumulative"
+                            single_contact_matrix, n_elements = update_Jijab_couplings_cumulative(q, Jij_couplings, max_single_DKL, fij_target, pij_training, added_edge, single_contact_matrix, n_elements)
+                        end
+                        ################################################################################################### 
+
+                         
+
+
+                        #print("\n[", added_edge[1] , "  ", added_edge[2], "]  iter: $i" ) 
+                        write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
+
+        
+                        if (i - 1) % 15 == 0 && i != 1
+                            print("   edges: ", n_edges,",   elements: ", n_elements, ",   ","edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%", "   ","elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%\n"    )
+                        end
+                        write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round( ((n_elements)/n_fully_connected_elements)*100,digits=2) )" ,"%"    ) 
+                        
+                        # update the log of Z 
+                        log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))    
+                        
+                    end
                 end
             end
         end
     end 
     return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 function rna_cm_model_generation(threshold, pseudo_count, number, number_matrix, ss_contact_matrix)	
