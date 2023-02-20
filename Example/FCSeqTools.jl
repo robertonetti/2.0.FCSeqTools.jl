@@ -215,7 +215,7 @@ function single_entries_kl_divergence(q, max_fij, max_pij)
 end
 
 
-function statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f_name, step=100, n_pictures=10)
+function statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f_name, method, path, step=100, n_pictures=10)
     max_single_DKL, ij_ab, single_likelihood_gain = single_entries_kl_divergence(q, fij_target[added_edge, :], pij_training[added_edge, :])
     #println("\nij_ab = ", ij_ab)
     write(f_name, "\n$(max_single_DKL)")  
@@ -224,7 +224,7 @@ function statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f_n
         push!(DKL_picture, max_single_DKL)  
         if discr == (n_pictures - 1)
             f_name = "single_contribs_step"*string(i - 6)*".txt"
-            path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example/DKLs"
+            
             file = open(joinpath(path, f_name), "w")
             [write(file, "$(dkl)\n") for dkl in DKL_picture ]
             close(file)
@@ -253,7 +253,7 @@ function update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree,
         contact_matrix[added_edge[1], added_edge[2]] = 1
         edge_list = vcat(edge_list, [added_edge[1], added_edge[2]]' )
     end
-    return contact_matrix, n_edges
+    return contact_matrix, n_edges, site_degree, contact_list, edge_list
 end
 
 function update_Jijab_couplings_largest(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)   
@@ -261,16 +261,22 @@ function update_Jijab_couplings_largest(q, Jij_couplings, ij_ab, fij_target, pij
     largest_component[ij_ab] = 1
     Jij_update = log.(fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1],added_edge[2],:])) .* largest_component
     Jij_couplings[added_edge[1],added_edge[2],:] += Jij_update     
+    return Jij_couplings
 end
 
-function update_Jijab_couplings_cumulative(q, Jij_couplings, DKL_matrix, fij_target, pij_training, added_edge, single_contact_matrix, n_elements, fraction = 0.2)   
+function update_Jijab_couplings_cumulative(q, Jij_couplings, DKL_matrix, fij_target, pij_training, added_edge, single_contact_matrix, n_elements, fraction)   
     cumul = sum(DKL_matrix)
+    DKL_copy = zeros(q*q)
+    copy!(DKL_copy, DKL_matrix)
     largest_component = zeros(q*q)
     tot = 0
-    while tot <= cumul * fraction
-        ab = argmax(DKL_matrix)
-        tot += maximum(DKL_matrix)
-        DKL_matrix[ab] = 0
+    count = 0
+    while tot <= cumul * fraction + 0.0000001 && count <= q*q +1
+        count += 1
+        ab = argmax(DKL_copy)
+        #print("tot ", tot, " cumul ", cumul, " ab ", ab ,"\n")
+        tot += maximum(DKL_copy)
+        DKL_copy[ab] = -10
         largest_component[ab] = 1
         single_contact_matrix, n_elements = update_single_contact_matrix(single_contact_matrix, added_edge, ab, n_elements)
     end
@@ -286,7 +292,7 @@ end
 
 
 
-function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, method)
+function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, method, fraction = 1.0)
     """
     Parameters
     ----------
@@ -313,11 +319,11 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, 
 
     score_vector = Float32[]
     contact_matrix = zeros(Int8, length(number_matrix[1,:]), length(number_matrix[1,:]))
-    n_edges = 0
 
     log_z = Float32(0)
 
     # RN ##############################################################################################
+    path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example/"*method*string(fraction)
     discr_counter = 0
     single_likelihood_gain_vector = Float32[]
     DKL_picture = []
@@ -327,11 +333,14 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, 
     ###################################################################################################
     println("Fully connected model has ", n_fully_connected_edges, " edges, ", n_fully_connected_elements, " elements and a score around ~ 0.95")
 
-
-    open(filename, "w") do f  
-        open("single_dkl.txt", "w") do f1
-            open("total_dkl.txt", "w") do f2
-                open("iterations.txt", "w") do f3
+    open(joinpath(path, filename), "w") do f  
+    #open(filename, "w") do f  
+        open(joinpath(path, "single_dkl.txt"), "w") do f1      
+        #open("single_dkl.txt", "w") do f1
+            open(joinpath(path, "total_dkl.txt"), "w") do f2  
+            #open("total_dkl.txt", "w") do f2
+                open(joinpath(path, "iterations.txt"), "w") do f3  
+                #open("iterations.txt", "w") do f3
                     write(f, "Fully connected model has ","$(n_fully_connected_edges)", " edges and a score around ~ 0.95")          
 
                     for i in 1:n_step  #10000
@@ -375,18 +384,18 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, 
                         # added edge and its likelihood gain
                         added_edge, likelihood_gain = max_kl_divergence(fij_target, pij_training)
                         likelihood_gain_vector = push!(likelihood_gain_vector, likelihood_gain)
-                        contact_matrix, n_edges = update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
+                        contact_matrix, n_edges, site_degree, contact_list, edge_list = update_contact_matrix(contact_matrix, added_edge, n_edges, site_degree, contact_list, edge_list)
                         write(f2, "\n$(likelihood_gain)")
 
                         # RN ##################################################################################################
-                        single_likelihood_gain, max_single_DKL, ij_ab = statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f1)
+                        single_likelihood_gain, max_single_DKL, ij_ab = statistics(i, q, added_edge, fij_target, pij_training, DKL_picture, f1, method, path)
                         single_likelihood_gain_vector = push!(single_likelihood_gain_vector, single_likelihood_gain)
                         # update Jij couplings
-                        if method == "largest component"
-                            update_Jijab_couplings_largest(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)
+                        if method == "largest_component"
+                            Jij_couplings = update_Jijab_couplings_largest(q, Jij_couplings, ij_ab, fij_target, pij_training, added_edge)
                             single_contact_matrix, n_elements = update_single_contact_matrix(single_contact_matrix, added_edge, ij_ab, n_elements)
                         elseif method == "cumulative"
-                            single_contact_matrix, n_elements = update_Jijab_couplings_cumulative(q, Jij_couplings, max_single_DKL, fij_target, pij_training, added_edge, single_contact_matrix, n_elements)
+                            single_contact_matrix, n_elements = update_Jijab_couplings_cumulative(q, Jij_couplings, max_single_DKL, fij_target, pij_training, added_edge, single_contact_matrix, n_elements, fraction)
                         end
                         ################################################################################################### 
 
@@ -397,7 +406,7 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, stats, 
                         write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]  iter: $i" ) 
 
         
-                        if (i - 1) % 15 == 0 && i != 1
+                        if i % 20 == 0  && i != 1
                             print("   edges: ", n_edges,",   elements: ", n_elements, ",   ","edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%", "   ","elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2))" ,"%\n"    )
                         end
                         write(f,"   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round( ((n_elements)/n_fully_connected_elements)*100,digits=2) )" ,"%"    ) 
