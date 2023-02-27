@@ -489,7 +489,7 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, method,
         mkdir(folder_name)
         path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example_Proteins/"*method
     elseif method == "cumulative"
-        folder_name = method*string(fraction)
+        folder_name = method*string(fraction)*"_stop="*string(stop)
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example_Proteins/"*folder_name
@@ -592,7 +592,7 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, method,
             end
         end
     end 
-    return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector
+    return score_vector, likelihood_gain_vector, sequences, Jij_couplings, h_local, contact_list, site_degree, edge_list, single_likelihood_gain_vector, path
 end
 
 
