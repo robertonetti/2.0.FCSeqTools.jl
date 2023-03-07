@@ -897,23 +897,38 @@ end
 
 
 
-function site_entropy_vector(matrix,q,pseudo_count,threshold)
-	frequency=freq_reweighted(matrix,q,pseudo_count,threshold)
-	entropy_vector=zeros(Float32,length(matrix[1,:]))
-	for i in 1:length(matrix[1,:])
-	    temp=0
+function site_entropy_vector(matrix, q, pseudo_count, threshold)
+	frequency = freq_reweighted(matrix, q, pseudo_count, threshold)
+	entropy_vector = zeros(Float32, length(matrix[1, :]))
+	for i in 1:length(matrix[1, :])
+	    temp = 0
 	    for j in 1:q
-		temp=temp+frequency[q*(i-1)+j]*log(frequency[q*(i-1)+j])
+		    temp = temp + frequency[q*(i - 1) + j]*log(frequency[q*(i - 1) + j])
 	    end
-	    entropy_vector[i]=temp
+	    entropy_vector[i] = temp
 	end
 	entropy_vector[isnan.(entropy_vector)].= 0
-	return -entropy_vector
+	return - entropy_vector
 end
 
 
+function site_entropy_full_model(wt_seq, q, couplings, fields, pseudo_count, threshold)
+    for i in 1:length(wt_seq)
+        for a in 1:q
+            seq = copy(wt_seq)
+            seq[i] = a
+            freq = freq_reweighted(seq, q, pseudo_count, threshold)  
+            fij = fij_reweighted(seq, q, pseudo_count, threshold)
+            - sum(fij .* couplings) - sum(freq .* fields)
+        end
+    end
+    freq = 
+    fij = fij_two_point(wt_seq, q, 0.0)
+    push!(full_energies, - sum(fij .* couplings) - sum(freq .* fields))
+end
 
-function profile_model_entropy(matrix,q,pseudo_count,threshold)
+
+function profile_model_entropy(matrix, q, pseudo_count, threshold)
 	return sum(site_entropy_vector(matrix,q,pseudo_count,threshold))
 end
 
