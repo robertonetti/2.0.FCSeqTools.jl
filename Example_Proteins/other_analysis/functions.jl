@@ -27,3 +27,29 @@ function full_model_energy(q, fields, couplings, MSA, L_MSA)
     end
     return full_energies
 end
+
+# FULL MODEL SINGLE SITE ENTROPIES
+function full_model_site_entropy(q, ref_seq, fields, couplings, pseudo_count, threshold)
+    L = length(ref_seq)
+    S_sites = zeros(L)
+    for i ∈ 1:L
+        #println("i : ", i)
+        energies_i = zeros(q)
+        for a_i ∈ 1:q
+            seq = copy(ref_seq)
+            seq[i] = a_i
+            freq = freq_reweighted(seq', q, pseudo_count, threshold)  
+            fij = fij_reweighted(seq', q, pseudo_count, threshold)
+            energies_i[a_i] = - sum(fij .* couplings) - sum(freq .* fields)
+        end
+
+        #println("energies_i = ", energies_i)
+
+        p_cond_i = exp.(energies_i) ./ sum(exp.(energies_i))
+
+        #println("p_cond_i = ", p_cond_i)
+
+        S_sites[i] = - sum( p_cond_i .* log.(p_cond_i))
+    end
+    return S_sites
+end
