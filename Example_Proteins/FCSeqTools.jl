@@ -484,20 +484,20 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, method,
 
     # RN ##############################################################################################
     if method == "largest_component"
-        folder_name = method
+        folder_name = "training/"*method
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
-        path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example_Proteins/"*method
+        path = folder_name
     elseif method == "cumulative"
-        folder_name = method*string(fraction)*"_stop="*string(stop)
+        folder_name = "training/"*method*string(fraction)*"_stop="*string(stop)
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
-        path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example_Proteins/"*folder_name
+        path = folder_name
     elseif method == "full_edge"
-        folder_name = method
+        folder_name = "training/"*method
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
-        path = "/Users/robertonetti/Documents/GitHub/FCSeqTools.jl/Example_Proteins/"*folder_name
+        path = folder_name
     end
     
     single_likelihood_gain_vector = Float32[]
