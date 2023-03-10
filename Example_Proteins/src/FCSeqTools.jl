@@ -484,17 +484,17 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, method,
 
     # RN ##############################################################################################
     if method == "largest_component"
-        folder_name = "training/"*method
+        folder_name = "../training/" * method
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name
     elseif method == "cumulative"
-        folder_name = "training/"*method*string(fraction)*"_stop="*string(stop)
+        folder_name = "../training/" * method * string(fraction) * "_stop=" * string(stop)
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name
     elseif method == "full_edge"
-        folder_name = "training/"*method
+        folder_name = "../training/" * method
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name

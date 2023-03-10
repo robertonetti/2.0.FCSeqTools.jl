@@ -96,3 +96,70 @@ function mutation_MSA(q, seq)
 
     return MSA_mut
 end
+
+# DATO UN DMS MSA CALCOLA LE ENERGIE CON I PARAMETRI FORNITI
+function compute_dms_ave_energies(q, MSA, wt_seq, fields, couplings)
+    L = length(MSA[1,:])
+    energies = zeros(L)
+    count = zeros(L)
+
+    freq = freq_single_point(wt_seq', q, 0.0) 
+    fij = fij_two_point(wt_seq', q, 0.0)
+    wt_ene = - sum(fij .* couplings) - sum(freq .* fields)
+
+    for m in 1:length(MSA[:, 1])
+        seq = MSA[m,:]
+        i = 1
+        flag = false
+        while flag == false
+            if seq[i] != wt_seq[i] 
+                flag = true
+            else
+                i += 1
+            end
+        end
+        freq = freq_single_point(seq', q, 0.0) 
+        fij = fij_two_point(seq', q, 0.0)
+        energies[i] += - sum(fij .* couplings) - sum(freq .* fields)
+        count[i] += 1
+    end
+    ave_energies = []
+
+    for i in 1:L
+        if energies[i] != 0.0
+            push!(ave_energies, energies[i] / count[i])
+        end
+    end
+    return ave_energies
+end
+
+# DATO L'MSA DMS DI MARTIN, CALCOLA LE ENERGIE MEDIE DEL LORO MODELLO
+function martin_compute_dms_ave_energies(q, MSA, wt_seq, MSA_E)
+    L = length(MSA[1,:])
+    energies = zeros(L)
+    count = zeros(L)
+    for m in 1:length(MSA[:, 1])
+        seq = MSA[m,:]
+        i = 1
+        flag = false
+        while flag == false
+            if seq[i] != wt_seq[i] 
+                flag = true
+            else
+                i += 1
+            end
+        end
+        freq = freq_single_point(seq', q, 0.0) 
+        fij = fij_two_point(seq', q, 0.0)
+        energies[i] += MSA_E[m]
+        count[i] += 1
+    end
+    ave_energies = []
+
+    for i in 1:L
+        if energies[i] != 0.0
+            push!(ave_energies, energies[i] / count[i])
+        end
+    end
+    return ave_energies
+end
