@@ -1,0 +1,5 @@
+Fully connected model has 24531 edges and a score around ~ 0.95
+[55  89]   (320 341 ) score: {-0.0044028806}   iter: 1   edges: 1   0.0%   0.0%
+[55  149]   (333 354 ) score: {-0.0011194735}   iter: 2   edges: 2   0.01%   0.0%
+[169  171]   (430 ) score: {0.0049033663}   iter: 3   edges: 3   0.01%   0.0%
+[169  219]   (425 ) score: {0.00770556}   iter: 4   edges: 4   0.02%   0.0%
