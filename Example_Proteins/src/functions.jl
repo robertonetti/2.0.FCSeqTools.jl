@@ -331,7 +331,6 @@ function count_common_Jij(Jij_1, Jij_2)
                     n_10 += 1
                 elseif Jij_1[i, j, idx] == 0.0 && Jij_2[i, j, idx] == 0.0
                     n_00 += 1
-                    
                 end
             end
             if flag == true
