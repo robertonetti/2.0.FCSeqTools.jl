@@ -1,0 +1,8 @@
+Common Edges: 
+ 3.6% of the total;   19.8% of the first model;   
+Common Elements: 
+ 0.0% of the total;   1.7% of the first model;   
+Number of cases where: J_1 == 0 &  J_2 != 0: 35489
+Number of cases where: J_1 != 0 &  J_2 == 0: 22790
+Number of cases where: J_1 == 0 &  J_2 == 0: 1994614
+Number of cases where: J_1 != 0 &  J_2 != 0: 403

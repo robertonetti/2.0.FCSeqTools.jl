@@ -1,0 +1,9 @@
+Complexity model 1: 0.92%;    Complexity model 2:    0.92%;   
+Common Edges: 
+ 10.8% of the total;   58.3% of the first model;   58.3% of the second model
+Common Elements: 
+ 0.1% of the total;   5.7% of the first model;   5.7% of the second model
+Number of cases where: J_1 == 0 &  J_2 != 0: 34910
+Number of cases where: J_1 != 0 &  J_2 == 0: 34910
+Number of cases where: J_1 == 0 &  J_2 == 0: 1981347
+Number of cases where: J_1 != 0 &  J_2 != 0: 2129
