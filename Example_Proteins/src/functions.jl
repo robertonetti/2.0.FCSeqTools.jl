@@ -383,9 +383,8 @@ function read_example_output(file_path)
     
     for line in lines[1:n]
         idx += 1
-        #println(idx)
+        #println(idx," ", line)
         a, b = split(line, "]   (")
-        #println(a)
         ed = a[2:end]
         el, sc = split(b, " )")
         sc = split(sc, "{")[2]
