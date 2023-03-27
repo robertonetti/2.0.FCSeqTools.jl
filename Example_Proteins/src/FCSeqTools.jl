@@ -456,7 +456,7 @@ end
 
 
 
-function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_name, method, notebook, fraction = 1.0, stop = 0.90)
+function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_name, test_folder,  method, notebook, fraction = 1.0, stop = 0.90)
     """
     Parameters
     ----------
@@ -490,21 +490,22 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
 
     # RN ##############################################################################################
     if method == "largest_component"
-        folder_name = "../training/"*family_name*"/" * method * "_reg="*string(pseudo_count) * "_h_ps-count=" * string(init_pseudo_count) * "nbook="*notebook
+        folder_name = "../training/"*family_name*"/" * test_folder *"/" * method * "_reg="*string(pseudo_count) * "_"*notebook
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name
     elseif method == "cumulative"
-        folder_name = "../training/"*family_name*"/" * method * string(fraction) * "_stop=" * string(stop) * "_reg="*string(pseudo_count)*"_h_ps-count=" * string(init_pseudo_count) * "nbook="*notebook
+        folder_name = "../training/"*family_name*"/" * test_folder *"/"* method * string(fraction) * "_stop=" * string(stop) * "_reg="*string(pseudo_count)* "_" *notebook
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name
     elseif method == "full_edge"
-        folder_name = "../training/"*family_name*"/"* method * "_reg="*string(pseudo_count) * "_h_ps-count=" * string(init_pseudo_count) * "nbook="*notebook
+        folder_name = "../training/"*family_name*"/"* test_folder *"/" * method * "_reg="*string(pseudo_count) * "_" *notebook
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name
     end
+    println("saving data in:", path)
     
     single_likelihood_gain_vector = Float32[]
     DKL_picture = []
