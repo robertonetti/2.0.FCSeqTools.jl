@@ -49,8 +49,8 @@ function full_model_site_entropy(q, ref_seq, fields, couplings, pseudo_count, th
         for a_i ∈ 1:q
             seq = copy(ref_seq)
             seq[i] = a_i
-            freq = freq_reweighted(seq', q, pseudo_count, threshold)  
-            fij = fij_reweighted(seq', q, pseudo_count, threshold)
+            freq =  freq_single_point(seq', q, pseudo_count)  #freq_reweighted(seq', q, pseudo_count, threshold)  
+            fij = fij_two_point(seq', q, pseudo_count) # fij_reweighted(seq', q, pseudo_count, threshold)
             energies_i[a_i] = - sum(fij .* couplings) - sum(freq .* fields)
         end
         p_cond_i = exp.(energies_i) ./ sum(exp.(energies_i))
@@ -346,12 +346,18 @@ function energy_space_connectivity(q, gen_seq, h, J, contact_list, site_degree)
     L = length(gen_seq[1,:])
     M = size(gen_seq,1)
     ΔE = zeros(M * L * (q-1))
+    ΔE_min = zeros(M * L)
+    ΔE_mean = zeros(M * L)
+    p_tra_mean = zeros(M * L)
+    idx_min = 0
     for n_seq ∈ 1:M
         seq = gen_seq[n_seq,:]
         for i ∈ 1:L 
             a = seq[i]
             remaining_amino = range(1,q)[range(1,q).!= a]
             idx = 0
+            idx_min += 1
+            δe_min = Inf
             for a1 in remaining_amino
                 idx += 1
                 δe = h[q * (i - 1) + a] - h[q * (i - 1) + a1]
@@ -361,10 +367,18 @@ function energy_space_connectivity(q, gen_seq, h, J, contact_list, site_degree)
                 end
                 index = (n_seq - 1)*L*(q - 1) + (i - 1)*(q - 1) + idx
                 ΔE[index] = δe 
+                ΔE_mean[idx_min] += δe
+                p_tra_mean[idx_min] += exp(-δe)
+                if δe_min >= δe 
+                    δe_min = δe
+                end
             end
+            ΔE_mean[idx_min] / length(remaining_amino)
+            p_tra_mean[idx_min]/ length(remaining_amino)
+            ΔE_min[idx_min] = δe_min
         end
     end
-    return ΔE
+    return ΔE, ΔE_min, ΔE_mean, p_tra_mean
 end
 
 function seq_energy(q, fields, couplings, seq)
@@ -395,9 +409,9 @@ function read_example_output(file_path)
     return edges, elements, scores
 end
 
-function compare_edges(edges1, elements1, edges2, elements2)
+function compare_edges(edges1, elements1, edges2, elements2, L)
     n = min(length(edges1), length(edges2))
-    L, q = 96, 21
+    q = 96
     x_elements, y_elements = falses(L, L, q*q), falses(L, L, q*q)
     x_edges, y_edges = falses(L, L), falses(L, L) 
     n_edges, n_elements = zeros(n), zeros(n)
@@ -431,13 +445,21 @@ function read_model(filepath)
         #println(element)
         if string(element[1]) == "J"
             usl, i, j, a, b, value = split(element, " ")
-            i, j, a, b = parse(Int64,i) + 1, parse(Int64,j) + 1, parse(Int64,a) + 1, parse(Int64,b) + 1
+            i, j, a, b = parse(Int64,i) + 1, parse(Int64,j) + 1, parse(Int64,a), parse(Int64,b)
+            if a == 0
+                a = 21
+            elseif b == 0
+                b = 21
+            end
             #println(i, j, a, b)
             J[i, j, (a-1)*q + b] = parse(Float64,value)
         elseif string(element[1]) == "h"
             usl, i, a, value = split(element, " ")
-            i, a = parse(Int64,i) + 1, parse(Int64,a) + 1
-            h[ q*(i - 1) + a] = parse(Float64,value)
+            i, a = parse(Int64,i) + 1, parse(Int64,a)
+            if a == 0
+                a = 21
+            end
+            h[q*(i - 1) + a] = parse(Float64,value)
         end
     end
     return J, h
