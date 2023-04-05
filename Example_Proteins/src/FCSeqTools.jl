@@ -544,15 +544,15 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
                             
                             score_vector = push!(score_vector, score)
                             score = round(score; digits=3)   
-                            print("\niteration = ", i)         
-                            print(",   Score = ",score, "\n") 
+                            #print("\niteration = ", i)         
+                            #print(",   Score = ",score, "\n") 
                             write(f,"   Score = ","$(score)")
 
                             # Average energy over the sampled distribution of sequences
                             energy1 = - sum(fij_two_point(sequences, q, 0) .* Jij_couplings) - sum(freq_single_point(sequences, q, 0) .* h_local)               
                             
-                            print("\n <E> = ", round(energy1; digits=2), ",  log(Z) = ", round(log_z; digits=2)) 
-                            print(",   S = ", round(log_z + energy1; digits=2))
+                            #print("\n <E> = ", round(energy1; digits=2), ",  log(Z) = ", round(log_z; digits=2)) 
+                            #print(",   S = ", round(log_z + energy1; digits=2))
                             write(f,",  <E> = ","$(round(energy1; digits=2))", ",  log(Z) = ","$(round(log_z; digits=2))")  
                             write(f,",   S = ","$(round(log_z + energy1; digits=2))")     
                                        #iter     #energy                            #log_z                         #Entropy                              #Score       #n edges      #n elements       #edge complexity                                               #elements complexity
@@ -592,9 +592,11 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
                         for element in added_elements
                             write(f,"$element ")
                         end 
-        
-                        if i % 20 == 0  && i != 1
-                            print("\n edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
+                        
+                        if i == 10 
+                            print("\n iteration = ", i,"    edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
+                        elseif i % 1000 == 0  && i != 1
+                            print("\n iteration = ", i,"   edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
                         end
                         write(f,") score: {$score}   iter: $i   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round( ((n_elements)/n_fully_connected_elements)*100,digits=2) )" ,"%"    ) 
                         
