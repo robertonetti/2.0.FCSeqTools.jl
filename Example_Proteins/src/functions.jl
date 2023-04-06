@@ -41,17 +41,28 @@ end
 
 
 # FULL MODEL SINGLE SITE ENTROPIES
-function full_model_site_entropy(q, ref_seq, fields, couplings, pseudo_count, threshold)
+function full_model_site_entropy(q, ref_seq, h, J, pseudo_count, contact_list, site_degree)
     L = length(ref_seq)
     S_sites = zeros(L)
+
+    # compute energy of the reference sequence
+    freq =  freq_single_point(ref_seq', q, pseudo_count)  
+    fij = fij_two_point(ref_seq', q, pseudo_count)
+    ref_energy = - sum(fij .* J) - sum(freq .* h)
+
     for i ∈ 1:L
-        energies_i = zeros(q)
-        for a_i ∈ 1:q
-            seq = copy(ref_seq)
-            seq[i] = a_i
-            freq =  freq_single_point(seq', q, pseudo_count)  #freq_reweighted(seq', q, pseudo_count, threshold)  
-            fij = fij_two_point(seq', q, pseudo_count) # fij_reweighted(seq', q, pseudo_count, threshold)
-            energies_i[a_i] = - sum(fij .* couplings) - sum(freq .* fields)
+        energies_i = zeros(q-1)
+        a = ref_seq[i]
+        remaining_amino = range(1,q)[range(1,q).!= a]
+        idx = 0
+        for a_new ∈ remaining_amino
+            idx += 1
+            δe = h[q * (i - 1) + a] - h[q * (i - 1) + a_new]
+            for j in contact_list[1: site_degree[i], i]
+                b = ref_seq[j]
+                δe += + J[i,j, q * (a - 1) + b] - J[i,j, q * (a_new - 1) + b] 
+            end
+            energies_i[idx] = ref_energy + δe
         end
         p_cond_i = exp.(energies_i) ./ sum(exp.(energies_i))
         S_sites[i] = - sum( p_cond_i .* log.(p_cond_i))

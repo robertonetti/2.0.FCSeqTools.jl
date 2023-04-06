@@ -473,7 +473,6 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
     # initialize to Profile Model
     Jij_couplings = zeros(Float32, length(number_matrix[1,:]), length(number_matrix[1,:]), q*q) 
 
-
     init_pseudo_count = 0.01
     # initialize local fields with frequencies
     h_local = log.(freq_reweighted(number_matrix, q, init_pseudo_count, 0.8)) 
@@ -530,15 +529,16 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
                         # samples the MSA with gibbs sampling                                                      #sweeps
                         sequences = gibbs_sampling(q, h_local, Jij_couplings, sequences, site_degree, contact_list,   5)
                         # two points frequencies
-                        pij_training = fij_two_point(sequences[1: number - 2000, :], q, pseudo_count)
-                        # Useful for Entropy computation
-                        pij_lgz = fij_two_point(sequences[number - 1999: end, :], q, 0)     
-
+                        pij_training = fij_two_point(sequences[1: number, :], q, pseudo_count)
+                        
+                        ## Useful for Entropy computation ##################################################
+                        #  pij_training = fij_two_point(sequences[1: number - 2000, :], q, pseudo_count)   #
+                        #  pij_lgz = fij_two_point(sequences[number - 1999: end, :], q, 0)                 #
+                        ####################################################################################
 
                         # compute SCORE
                         cij_model = correlation_two_point(sequences, q,  0)  
                         score = cor(cij_target, cij_model) # compute pearson correlations between model and data 
-
 
                         if i % 20 == 0 && i != 1
                             
@@ -595,13 +595,14 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
                         
                         if i == 10 
                             print("\n iteration = ", i,"    edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
-                        elseif i % 1000 == 0  && i != 1
+                        elseif i % 10 == 0  && i != 1
                             print("\n iteration = ", i,"   edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
                         end
                         write(f,") score: {$score}   iter: $i   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round( ((n_elements)/n_fully_connected_elements)*100,digits=2) )" ,"%"    ) 
                         
-                        # update the log of Z 
-                        log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))     
+                        ## update the log of Z ###############################################################################################################################################
+                        ##  log_z += log(sum((fij_target[added_edge[1], added_edge[2],:] ./ (pij_training[added_edge[1], added_edge[2],:])) .* (pij_lgz[added_edge[1],added_edge[2],:])))   ##
+                        ######################################################################################################################################################################
                     end
                 end
             end
