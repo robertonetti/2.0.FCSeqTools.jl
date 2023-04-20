@@ -489,7 +489,7 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
 
     # RN ##############################################################################################
     if method == "largest_component"
-        folder_name = "../training/"*family_name*"/" * test_folder *"/" * method * "_reg="*string(pseudo_count) * "_"*notebook
+        folder_name = "../training/"*family_name*"/" * method * "/" * test_folder *"/" * method * "_reg="*string(pseudo_count) * "_"*notebook
         rm(folder_name, force=true, recursive=true)
         mkdir(folder_name)
         path = folder_name
@@ -589,13 +589,18 @@ function E_A_A(q, n_step, pseudo_count, number, number_matrix, filename, family_
                         ########################################################################################################
 
                         write(f,"\n[", "$(added_edge[1])" , "  ", "$(added_edge[2])", "]   (")
-                        for element in added_elements
-                            write(f,"$element ")
-                        end 
-                        
+                        if method == "cumulative"
+                            for element in added_elements
+                                write(f,"$element ")
+                            end 
+                        elseif method == "largest_component"
+                            write(f,"$ij_ab ")
+                        end
+
+
                         if i == 10 
                             print("\n iteration = ", i,"    edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
-                        elseif i % 10 == 0  && i != 1
+                        elseif i % 200 == 0  && i != 1
                             print("\n iteration = ", i,"   edges: ", n_edges,",   elements: ", n_elements, ",   edge complexity: $(round(((n_edges)/n_fully_connected_edges)*100,digits=2)) %", ",  elements complexity: $(round(((n_elements)/n_fully_connected_elements)*100,digits=2)) %\n")
                         end
                         write(f,") score: {$score}   iter: $i   edges: ","$(n_edges)", "   ","$(round(((n_edges)/n_fully_connected_edges)*100,digits=2))" ,"%",  "   ","$(round( ((n_elements)/n_fully_connected_elements)*100,digits=2) )" ,"%"    ) 

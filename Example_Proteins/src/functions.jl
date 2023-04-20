@@ -70,71 +70,87 @@ function full_model_site_entropy(q, ref_seq, h, J, pseudo_count, contact_list, s
     return S_sites
 end
 
-function mutation_MSA(q, seq)
-    MSA_mut1 = []
-    push!(MSA_mut1, seq)
-    c = 0
-    for i in seq
-        c += 1
-        if i != q
-            for a in 1:q - 1
-                if a != i 
-                    new_seq = copy(seq)
-                    new_seq[c] = a
-                    push!(MSA_mut1, new_seq)
+function make_DMS_and_compute_energy(q, ref_seq, h, J, contact_list, site_degree)
+    DMS = []
+    DMS_energies = []
+    L = length(ref_seq)
+    # compute energy of the reference sequence
+    freq =  freq_single_point(ref_seq', q, 0)  
+    fij = fij_two_point(ref_seq', q, 0)
+    ref_energy = - sum(fij .* J) - sum(freq .* h)
+    # push the WT
+    push!(DMS, seq)
+    push!(DMS_energies, ref_energy)
+
+    for i in 1:L
+        a = ref_seq[i]
+        if a != q # to be sure it is not a gap
+            remaining_amino = range(1,q-1)[range(1,q-1).!= a]
+            for a_new in remaining_amino
+                new_seq = copy(ref_seq)
+                new_seq[i] = a_new
+                push!(DMS, new_seq)
+                # compute energy difference
+                δe = h[q * (i - 1) + a] - h[q * (i - 1) + a_new]
+                for j in contact_list[1: site_degree[i], i]
+                    b = ref_seq[j]
+                    δe += + J[i,j, q * (a - 1) + b] - J[i,j, q * (a_new - 1) + b] 
                 end
+                push!(DMS_energies, ref_energy + δe)
             end
         end
     end
 
-    L_MSA = length(MSA_mut1)
-    L_prot = length(MSA_mut1[1])
+    L_MSA = length(DMS)
+    L_prot = length(DMS[1])
 
-    MSA_mut = Array{Int64}(undef, L_MSA, L_prot)
+    DMS_new = Array{Int64}(undef, L_MSA, L_prot)
     for i in 1:L_MSA
         for j in 1:L_prot
-        MSA_mut[i, j] = MSA_mut1[i][j]
+            DMS_new[i, j] = DMS[i][j]
         end
-
     end
-
-    return MSA_mut
+    return MSA_mut, DMS_energies
 end
 
 # DATO UN DMS MSA CALCOLA LE ENERGIE CON I PARAMETRI FORNITI
-function compute_dms_ave_energies(q, MSA, wt_seq, fields, couplings)
-    L = length(MSA[1,:])
-    energies = zeros(L)
+function compute_dms_ave_energies(q, MSA, wt_seq, h, J, contact_list, site_degree)
+    L, M = length(MSA[1,:]), length(MSA[:, 1])
+     
+    energies = []
+    ave_energies1 = zeros(L)
     count = zeros(L)
 
+    # compute energy of the reference sequence
     freq = freq_single_point(wt_seq', q, 0.0) 
     fij = fij_two_point(wt_seq', q, 0.0)
-    wt_ene = - sum(fij .* couplings) - sum(freq .* fields)
+    wt_energy = - sum(fij .* J) - sum(freq .* h)
 
-    for m in 1:length(MSA[:, 1])
+    for m ∈ 1:M
         seq = MSA[m,:]
-        i = 1
-        flag = false
+        # find the mutated position 
+        i, flag = 1, false
         while flag == false
-            if seq[i] != wt_seq[i] 
-                flag = true
-            else
-                i += 1
-            end
+            seq[i] != wt_seq[i] ? flag = true : i += 1
         end
-        freq = freq_single_point(seq', q, 0.0) 
-        fij = fij_two_point(seq', q, 0.0)
-        energies[i] += - sum(fij .* couplings) - sum(freq .* fields)
+        # compute energy difference
+        a, a_new = wt_seq[i], seq[i]
+        δe = h[q * (i - 1) + a] - h[q * (i - 1) + a_new]
+        for j in contact_list[1: site_degree[i], i]
+            b = wt_seq[j]
+            δe += + J[i,j, q * (a - 1) + b] - J[i,j, q * (a_new - 1) + b] 
+        end
+        ave_energies1[i] += wt_energy + δe
+        push!(energies, wt_energy + δe)
         count[i] += 1
     end
     ave_energies = []
-
     for i in 1:L
         if energies[i] != 0.0
-            push!(ave_energies, energies[i] / count[i])
+            push!(ave_energies, ave_energies1[i] / count[i])
         end
     end
-    return ave_energies
+    return energies, ave_energies
 end
 
 # DATO L'MSA DMS DI MARTIN, CALCOLA LE ENERGIE MEDIE DEL LORO MODELLO
@@ -147,11 +163,7 @@ function martin_compute_dms_ave_energies(q, MSA, wt_seq, MSA_E)
         i = 1
         flag = false
         while flag == false
-            if seq[i] != wt_seq[i] 
-                flag = true
-            else
-                i += 1
-            end
+            seq[i] != wt_seq[i] ? flag = true : i += 1
         end
         freq = freq_single_point(seq', q, 0.0) 
         fij = fij_two_point(seq', q, 0.0)
@@ -328,14 +340,13 @@ function count_common_Jij(Jij_1, Jij_2)
     n_ij, n_ij_ab = 0, 0
     n_01, n_10 = 0, 0
     n_00 = 0
-    flag = false
+    
     for j in 1:L
-        for i in 1:j
+        for i in 1:j - 1
             for idx in 1:qq
                 if Jij_1[i, j, idx] != 0.0 && Jij_2[i, j, idx] != 0.0
                     n_ij_ab += 1
                     Jij_common1[i, j, idx], Jij_common2[i, j, idx] = Jij_1[i, j, idx], Jij_2[i, j, idx]
-                    flag = true
                 elseif Jij_1[i, j, idx] == 0.0 && Jij_2[i, j, idx] != 0.0
                     n_01 += 1
                 elseif Jij_1[i, j, idx] != 0.0 && Jij_2[i, j, idx] == 0.0
@@ -344,12 +355,9 @@ function count_common_Jij(Jij_1, Jij_2)
                     n_00 += 1
                 end
             end
-            if flag == true
-                n_ij += 1
-                flag = false
-            end
         end
     end 
+    n_ij = count(!iszero, sum(abs.(Jij_1[:,:,i]) for i in 1:size(Jij_1, 3)) .* sum(abs.(Jij_2[:,:,i]) for i in 1:size(Jij_2, 3)))
     return n_ij, n_ij_ab, n_01, n_10, n_00, Jij_common1, Jij_common2
 end
 

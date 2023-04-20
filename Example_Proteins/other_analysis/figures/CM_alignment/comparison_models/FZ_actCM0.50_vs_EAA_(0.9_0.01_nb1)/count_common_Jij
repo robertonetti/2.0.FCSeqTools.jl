@@ -1,0 +1,10 @@
+Edge Complexity model 1: 100.0%;    Edge Complexity model 2:    51.84%;   
+Element Complexity model 1: 49.56%;    Element Complexity model 2:    1.26%;   
+Common Edges: 
+ 51.84% of the total;   51.84% of the first model;   100.0% of the second model
+Common Elements: 
+ 1.26% of the total;   2.54% of the first model;   99.59% of the second model
+Number of cases where  J_1 != 0  &&  J_2 != 0: 25267
+Number of cases where  J_1 == 0  &&  J_2 != 0: 103
+Number of cases where  J_1 != 0  &&  J_2 == 0: 971325
+Number of cases where  J_1 == 0  &&   J_2 == 0: 1014265
