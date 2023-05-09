@@ -18,12 +18,12 @@ end
 
 # FULL MODEL ENERGIES
 function full_model_energy(q, fields, couplings, MSA, L_MSA)
-    full_energies = []
+    full_energies = zeros(L_MSA)
     for i in 1:L_MSA
         seq = MSA[i,:]' 
         freq = freq_single_point(seq, q, 0.0) 
         fij = fij_two_point(seq, q, 0.0)
-        push!(full_energies, - sum(fij .* couplings) - sum(freq .* fields))
+        full_energies[i] = - sum(fij .* couplings) - sum(freq .* fields)
     end
     return full_energies
 end
@@ -361,6 +361,63 @@ function count_common_Jij(Jij_1, Jij_2)
     return n_ij, n_ij_ab, n_01, n_10, n_00, Jij_common1, Jij_common2
 end
 
+function count_common_Jij_three_models(Jij_1, Jij_2, Jij_3)
+    Jij_common1, Jij_common2, Jij_common3 = zeros(size(Jij_1)), zeros(size(Jij_1)), zeros(size(Jij_1))
+    Jij_12, Jij_13, Jij_23 =  zeros(size(Jij_1)), zeros(size(Jij_1)), zeros(size(Jij_1))
+    Jij_123 = zeros(size(Jij_1))
+    L, qq = size(Jij_1)[1], size(Jij_1)[3] 
+
+    n_000, n_100, n_010, n_001, n_110, n_101, n_011, n_111 = 0, 0, 0, 0, 0, 0, 0, 0, 0
+    n_12, n_13, n_23 = 0, 0, 0
+    n_ij = 0
+    
+    
+
+
+
+    for j in 1:L
+        for i in 1:j - 1
+            for idx in 1:qq
+                if Jij_1[i, j, idx] != 0.0 && Jij_2[i, j, idx] != 0.0 && Jij_3[i, j, idx] != 0.0
+                    n_111 += 1
+                    Jij_common1[i, j, idx], Jij_common2[i, j, idx], Jij_common3[i, j, idx] = Jij_1[i, j, idx], Jij_2[i, j, idx], Jij_3[i, j, idx]
+                    Jij_123[i, j, idx] = 1
+                    n_12 += 1
+                    n_13 += 1
+                    n_23 += 1
+                elseif Jij_1[i, j, idx] != 0.0 && Jij_2[i, j, idx] == 0.0 && Jij_3[i, j, idx] == 0.0
+                    n_100 += 1
+                elseif Jij_1[i, j, idx] == 0.0 && Jij_2[i, j, idx] != 0.0 && Jij_3[i, j, idx] == 0.0
+                    n_010 += 1
+                elseif Jij_1[i, j, idx] == 0.0 && Jij_2[i, j, idx] == 0.0 && Jij_3[i, j, idx] != 0.0
+                    n_001 += 1
+                elseif Jij_1[i, j, idx] != 0.0 && Jij_2[i, j, idx] != 0.0 && Jij_3[i, j, idx] == 0.0
+                    n_110 += 1
+                    Jij_12[i, j, idx] = 1
+                    n_12 += 1
+                elseif Jij_1[i, j, idx] != 0.0 && Jij_2[i, j, idx] == 0.0 && Jij_3[i, j, idx] != 0.0
+                    Jij_13[i, j, idx] = 1
+                    n_101 += 1
+                    n_13 += 1
+                elseif Jij_1[i, j, idx] == 0.0 && Jij_2[i, j, idx] != 0.0 && Jij_3[i, j, idx] != 0.0
+                    Jij_23[i, j, idx] = 1
+                    n_011 += 1
+                    n_23 += 1
+                elseif Jij_1[i, j, idx] == 0.0 && Jij_2[i, j, idx] == 0.0 && Jij_3[i, j, idx] == 0.0
+                    n_000 += 1
+                end
+            end
+        end
+    end 
+    n_ij = count(!iszero, sum(abs.(Jij_1[:,:,i]) for i in 1:size(Jij_1, 3)) .* sum(abs.(Jij_2[:,:,i]) for i in 1:size(Jij_2, 3)) .* sum(abs.(Jij_3[:,:,i]) for i in 1:size(Jij_3, 3)))
+    n_ij_12 = count(!iszero, sum(abs.(Jij_1[:,:,i]) for i in 1:size(Jij_1, 3)) .* sum(abs.(Jij_2[:,:,i]) for i in 1:size(Jij_2, 3)))
+    n_ij_13 = count(!iszero, sum(abs.(Jij_1[:,:,i]) for i in 1:size(Jij_1, 3)) .* sum(abs.(Jij_3[:,:,i]) for i in 1:size(Jij_3, 3)))
+    n_ij_23 = count(!iszero, sum(abs.(Jij_2[:,:,i]) for i in 1:size(Jij_2, 3)) .* sum(abs.(Jij_3[:,:,i]) for i in 1:size(Jij_3, 3)))
+    return n_000, n_100, n_010, n_001, n_110, n_101, n_011, n_111, n_12, n_13, n_23, n_ij, n_ij_12, n_ij_13, n_ij_23,  Jij_common1, Jij_common2, Jij_common3, Jij_12, Jij_13, Jij_23, Jij_123
+end
+
+
+
 function energy_space_connectivity(q, gen_seq, h, J, contact_list, site_degree)
     L = length(gen_seq[1,:])
     M = size(gen_seq,1)
@@ -482,4 +539,82 @@ function read_model(filepath)
         end
     end
     return J, h
+end
+
+function distance_from_ref_seq(ref_seq, MSA)
+    M, L = size(MSA,1), size(MSA,2)
+    println(M)
+    distance = zeros(M)
+    seq_identity = zeros(M)
+    for i ∈ 1:M
+        common = sum(ref_seq .== nat_MSA[i,:])
+        distance[i] = L - common
+        seq_identity[i] = common / L 
+    end
+    return distance, seq_identity
+end    
+
+function sequence_identity(MSA_nat, MSA)
+    M_nat, M = size(MSA_nat,1), size(MSA, 1)
+    L = size(MSA_nat, 2)
+    if L != size(MSA, 2)
+        error("The two MSAs have different protein length")
+    end
+    distance = zeros(M)
+    seq_identity = zeros(M)
+    for m ∈ 1:M
+        min = Inf
+        for m_nat ∈ 1:M_nat
+            val = L - sum(MSA[m, :] .== MSA_nat[m_nat,:])
+            #println(val)
+            if min >= val
+                #println("ok", m, " ", m_nat)
+                min = val
+            end
+        end
+        distance[m] = min
+        seq_identity[m] = 1 - distance[m]/L
+    end
+    return distance, seq_identity
+end
+
+
+function sequence_identity_NAT(MSA_nat)
+    M_nat, M = size(MSA_nat,1), size(MSA_nat, 1)
+    L = size(MSA_nat, 2)
+    distance = zeros(M)
+    seq_identity = zeros(M)
+    for m ∈ 1:M
+        min = Inf
+        for m_nat ∈ 1:M_nat
+            val = L - sum(MSA_nat[m, :] .== MSA_nat[m_nat,:])
+            if min >= val && val != 0 
+                min = val
+            end
+        end
+        distance[m] = min
+        seq_identity[m] = 1 - distance[m]/L
+    end
+    return distance, seq_identity
+end
+
+function counting_different_pairings(MSA, nat_MSA, q)
+    pseudo_count = 0.001
+    threshold = Float32(pseudo_count /(q*q))
+    different_pairs = zeros(size(MSA, 1))
+    nat_fij = fij_two_point(nat_MSA, q, pseudo_count)   
+    #println("natural sequences fij --- size: ",size(nat_fij), " non-zero elements: ", count(!iszero, nat_fij), " threshold elements: ", count(==(threshold), nat_fij))
+
+    for i ∈ 1:size(MSA,1)
+        seq = MSA[i,:]
+
+        fij = fij_two_point(seq', q, 0)
+        #println("generated sequences fij --- size: ",size(fij), " non-zero elements: ", count(!iszero, fij), " threshold elements: ", count(==(threshold), fij))
+        
+        fij =  nat_fij .* fij
+        #println("product sequences fij --- size: ",size(fij), " non-zero elements: ", count(!iszero, fij), " threshold elements: ", count(==(threshold), fij))
+
+        different_pairs[i] = count(==(threshold), fij)
+    end
+    return different_pairs
 end
