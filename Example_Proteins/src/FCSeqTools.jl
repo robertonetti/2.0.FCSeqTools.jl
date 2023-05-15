@@ -670,12 +670,17 @@ end
 
 
 
-function do_letter_matrix(filename)
+function do_letter_matrix(filename, L_stop, flag=false)
 f=open(filename)
     lines=readlines(f)
     lines = lines[lines.!=""]
     letter_matrix = Array{Char,2}(undef,Int64(1),Int64(0))
-    for i in 1:Int64(length(lines))
+    if flag == true
+        M = L_stop
+    else 
+        M = Int64(length(lines))
+    end
+    for i in 1:M
         if lines[i][1]=='>'
             j=1
             temp=join(lines[i+j])
@@ -701,7 +706,7 @@ end
 
 
 
-function do_number_matrix_rna(letter_matrix,threshold)
+function do_number_matrix_rna(letter_matrix, threshold)
     n_columns=length(letter_matrix[1,:])
     n_rows=length(letter_matrix[:,1])
     number_matrix=zeros(Int8,n_rows,n_columns)

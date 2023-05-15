@@ -578,6 +578,63 @@ function sequence_identity(MSA_nat, MSA)
     return distance, seq_identity
 end
 
+function sequence_identity_and_energy(MSA_nat, MSA, h, Jij, L_stop)
+    M_nat, M = size(MSA_nat,1), L_stop
+    L = size(MSA_nat, 2)
+    q = 21
+    if L != size(MSA, 2)
+        error("The two MSAs have different protein length")
+    end
+    distance = zeros(M)
+    Δenergy = zeros(M)
+    seq_identity = zeros(M)
+    select_m, select_m_nat = 0, 0
+    for m ∈ 1:M
+        min = Inf
+        for m_nat ∈ 1:M_nat
+            val = L - sum(MSA[m, :] .== MSA_nat[m_nat,:])
+            if min >= val
+                min = val
+                select_m = m
+                select_m_nat = m_nat
+            end
+        end
+        #println(select_m, " ", select_m_nat)
+        e1 = first(full_model_energy(q, h, Jij, MSA[select_m, :]', 1))
+        e2 = first(full_model_energy(q, h, Jij, MSA_nat[select_m_nat, :]', 1))
+        Δenergy[m] = e1 - e2
+        distance[m] = min
+        seq_identity[m] = 1 - distance[m]/L
+    end
+    return distance, seq_identity, Δenergy
+end
+
+function sequence_identity_and_energy_NAT(MSA_nat, h, Jij)
+    M_nat, M = size(MSA_nat,1), size(MSA_nat, 1)
+    L = size(MSA_nat, 2)
+    distance = zeros(M)
+    Δenergy = zeros(M)
+    seq_identity = zeros(M)
+    select_m, select_m_nat = 0, 0
+    for m ∈ 1:M
+        min = Inf
+        for m_nat ∈ 1:M_nat
+            val = L - sum(MSA_nat[m, :] .== MSA_nat[m_nat,:])
+            if min >= val && val != 0 
+                min = val
+                select_m = m
+                select_m_nat = m_nat
+            end
+        end
+        e1 = first(full_model_energy(q, h, Jij, MSA_nat[select_m, :]', 1))
+        e2 = first(full_model_energy(q, h, Jij, MSA_nat[select_m_nat, :]', 1))
+        Δenergy[m] = e1 - e2
+        distance[m] = min
+        seq_identity[m] = 1 - distance[m]/L
+    end
+    return distance, seq_identity, Δenergy
+end
+
 
 function sequence_identity_NAT(MSA_nat)
     M_nat, M = size(MSA_nat,1), size(MSA_nat, 1)
@@ -596,6 +653,28 @@ function sequence_identity_NAT(MSA_nat)
         seq_identity[m] = 1 - distance[m]/L
     end
     return distance, seq_identity
+end
+
+function remove_too_similar_NAT(MSA_nat, threshold)
+    M =  size(MSA_nat, 1)
+    L = size(MSA_nat, 2)
+
+    MSA_nat_new = copy(MSA_nat)
+    for m ∈ 1:M
+        min = Inf
+        m_nat = 1
+        while m_nat <= size(MSA_nat_new, 1)
+            val = L - sum(MSA_nat[m, :] .== MSA_nat_new[m_nat,:])
+            if min >= val && val != 0 
+                min = val
+                if 1 - min/L >= threshold
+                    MSA_nat_new = MSA_nat_new[setdiff(1:end, m_nat), :]
+                end
+            end
+            m_nat += 1
+        end
+    end
+    return MSA_nat_new
 end
 
 function counting_different_pairings(MSA, nat_MSA, q)
